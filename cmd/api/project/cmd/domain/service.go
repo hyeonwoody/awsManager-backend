@@ -3,6 +3,7 @@ package project_domain
 import (
 	project_infrastructure "awsManager/api/project/cmd/infrastructure"
 	project "awsManager/api/project/cmd/model"
+	"fmt"
 )
 
 type Service struct {
@@ -37,7 +38,7 @@ func (s *Service) List() ([]project.Model, error) {
 func (s *Service) FindByName(name string) (*project.Model, error) {
 	project, err := s.repo.FindByName(name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to find project: %w", err)
 	}
 	return project, nil
 }
