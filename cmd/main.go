@@ -1,7 +1,8 @@
 package main
 
 import (
-	project "awsManager/api/project"
+	"awsManager/api/ec2"
+	"awsManager/api/project"
 	"awsManager/api/user"
 	"awsManager/database"
 	di "awsManager/dependencyInjection"
@@ -21,6 +22,7 @@ func main() {
 
 	user.Main(&container, router)
 	project.Main(&container, router)
+	ec2.Main(&container, router)
 
 	router.Run(":10000")
 }

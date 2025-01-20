@@ -1,6 +1,7 @@
 package database
 
 import (
+	ec2 "awsManager/api/ec2/cmd/model"
 	project "awsManager/api/project/cmd/model"
 	subProject "awsManager/api/project/cmd/subProject/model"
 	user "awsManager/api/user/cmd/model"
@@ -27,6 +28,7 @@ func Migrate() {
 		&project.Model{},
 		&user.Model{},
 		&subProject.Model{},
+		&ec2.Model{},
 	)
 	if err != nil {
 		panic("Failed to migrate database : " + err.Error())

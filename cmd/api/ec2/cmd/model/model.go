@@ -6,7 +6,7 @@ const (
 	T2Micro InstanceType = iota
 )
 
-type Ec2 struct {
+type Model struct {
 	ProjectId uint `gorm:"primaryKey;not null"`
 	KeyNumber uint `gorm:"primaryKey;not null"`
 }

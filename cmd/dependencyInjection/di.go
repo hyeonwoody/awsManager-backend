@@ -12,6 +12,10 @@ import (
 	user_infrastructure "awsManager/api/user/cmd/infrastructure"
 	user_presentation "awsManager/api/user/cmd/presentation"
 
+	ec2_domain "awsManager/api/ec2/cmd/domain"
+	ec2_infrastructure "awsManager/api/ec2/cmd/infrastructure"
+	ec2_presentation "awsManager/api/ec2/cmd/presentation"
+
 	"gorm.io/gorm"
 )
 
@@ -28,12 +32,17 @@ type Container struct {
 	SubProjectService    subProject_domain.IService
 
 	UserProjectFacade userUseCase.IUserProjectFacade
+
+	Ec2Repository ec2_infrastructure.IRepository
+	Ec2Service    ec2_domain.IService
+	Ec2Handler    ec2_presentation.IHandler
 }
 
 func (c *Container) Init(db *gorm.DB) {
 	c.UserRepository = user_infrastructure.NewRepository(db)
 	c.ProjectRepository = project_infrastructure.NewRepository(db)
 	c.SubProjectRepository = subProject_infrastructure.NewRepository(db)
+	c.Ec2Repository = ec2_infrastructure.NewRepository(db)
 
 	c.UserService = user_domain.NewService(c.UserRepository)
 	c.ProjectService = project_domain.NewService(c.ProjectRepository)
@@ -43,4 +52,7 @@ func (c *Container) Init(db *gorm.DB) {
 
 	c.UserProjectFacade = userUseCase.NewUserProjectFacade(c.UserService, c.ProjectService)
 	c.UserHandler = user_presentation.NewHandler(c.UserProjectFacade, c.UserService)
+
+	c.Ec2Service = ec2_domain.NewService(c.Ec2Repository)
+	c.Ec2Handler = ec2_presentation.NewHandler(c.Ec2Service)
 }
