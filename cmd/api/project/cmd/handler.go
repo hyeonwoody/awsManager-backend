@@ -46,6 +46,7 @@ func (h *Handler) CreateSubProject(c *gin.Context) {
 	project, err := h.projectSvc.FindByName(input.ProjectName)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 	h.subProjectSvc.Create(project.Id, input.SubProjectName, input.Group)
 	subProjectNames := h.subProjectSvc.FindByProjectId(project.Id)
