@@ -1,9 +1,9 @@
 package user_handler
 
 import (
-	user "awsManager/api/user/cmd"
-	useCase "awsManager/api/user/cmd/useCase"
-	useCaseDto "awsManager/api/user/cmd/useCase/dto"
+	useCase "awsManager/api/user/cmd/application/useCase"
+	useCaseDto "awsManager/api/user/cmd/application/useCase/dto/in"
+	domain "awsManager/api/user/cmd/domain"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -15,10 +15,10 @@ import (
 
 type Handler struct {
 	projectFcd useCase.IUserProjectFacade
-	svc        user.IService
+	svc        domain.IService
 }
 
-func NewHandler(projectFcd useCase.IUserProjectFacade, svc user.IService) *Handler {
+func NewHandler(projectFcd useCase.IUserProjectFacade, svc domain.IService) *Handler {
 	return &Handler{
 		projectFcd: projectFcd,
 		svc:        svc}
@@ -48,5 +48,10 @@ func (h *Handler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	h.projectFcd.CreateUser(input)
+	createdUser, err := h.projectFcd.CreateUser(input)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"user": createdUser})
 }

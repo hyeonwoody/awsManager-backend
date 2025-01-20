@@ -2,16 +2,18 @@ package user_useCase
 
 import (
 	project "awsManager/api/project/cmd"
-	user "awsManager/api/user/cmd"
-	dto "awsManager/api/user/cmd/useCase/dto"
+	dto "awsManager/api/user/cmd/application/useCase/dto/in"
+	domain "awsManager/api/user/cmd/domain"
+	user "awsManager/api/user/cmd/model"
+	"fmt"
 )
 
 type UserProjectFacade struct {
-	userService    user.IService
+	userService    domain.IService
 	projectService project.IService
 }
 
-func NewUserProjectFacade(userSvc user.IService, projectSvc project.IService) *UserProjectFacade {
+func NewUserProjectFacade(userSvc domain.IService, projectSvc project.IService) *UserProjectFacade {
 	return &UserProjectFacade{
 		userService:    userSvc,
 		projectService: projectSvc,
@@ -30,7 +32,7 @@ func (f *UserProjectFacade) FindNextIndex(projectName string) (uint, error) {
 func (f *UserProjectFacade) CreateUser(input dto.CreateUserCommand) (*user.Model, error) {
 	project, err := f.projectService.FindByName(input.ProjectName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to find Project: %w", err)
 	}
 	createdUser, err := f.userService.Create(project.Id, input.KeyNumber, input.Password, input.AccessKey, input.AccessKey)
 	return createdUser, err

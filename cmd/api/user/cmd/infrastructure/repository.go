@@ -1,6 +1,8 @@
-package user
+package user_infrastructure
 
 import (
+	user "awsManager/api/user/cmd/model"
+
 	"gorm.io/gorm"
 )
 
@@ -12,13 +14,13 @@ func NewRepository(db *gorm.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) Save(user *Model) error {
+func (r *Repository) Save(user *user.Model) error {
 	result := r.db.Save(user)
 	return result.Error
 }
 
-func (r *Repository) FindById(id uint) (*Model, error) {
-	var user Model
+func (r *Repository) FindById(id uint) (*user.Model, error) {
+	var user user.Model
 	result := r.db.First(&user, id)
 	if result.Error != nil {
 		return nil, result.Error

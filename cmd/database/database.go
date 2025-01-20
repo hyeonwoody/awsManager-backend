@@ -3,7 +3,7 @@ package database
 import (
 	project "awsManager/api/project/cmd"
 	subProject "awsManager/api/project/cmd/subProject/model"
-	user "awsManager/api/user/cmd"
+	user "awsManager/api/user/cmd/model"
 	"log"
 
 	"gorm.io/driver/mysql"
