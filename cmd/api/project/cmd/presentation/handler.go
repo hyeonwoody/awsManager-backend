@@ -1,6 +1,8 @@
-package project
+package project_presentation
 
 import (
+	project_domain "awsManager/api/project/cmd/domain"
+	project "awsManager/api/project/cmd/model"
 	subProject_domain "awsManager/api/project/cmd/subProject/domain"
 	"net/http"
 	"strconv"
@@ -9,11 +11,11 @@ import (
 )
 
 type Handler struct {
-	projectSvc    IService
+	projectSvc    project_domain.IService
 	subProjectSvc subProject_domain.IService
 }
 
-func NewHandler(projectSvc IService, subProjectSvc subProject_domain.IService) *Handler {
+func NewHandler(projectSvc project_domain.IService, subProjectSvc subProject_domain.IService) *Handler {
 	return &Handler{projectSvc: projectSvc, subProjectSvc: subProjectSvc}
 }
 
@@ -83,7 +85,7 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	updatedProject := &Model{
+	updatedProject := &project.Model{
 		Id:   uint(id),
 		Name: input.Name,
 	}

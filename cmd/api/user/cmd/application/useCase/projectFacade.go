@@ -1,19 +1,19 @@
 package user_useCase
 
 import (
-	project "awsManager/api/project/cmd"
+	project_domain "awsManager/api/project/cmd/domain"
 	dto "awsManager/api/user/cmd/application/useCase/dto/in"
-	domain "awsManager/api/user/cmd/domain"
+	user_domain "awsManager/api/user/cmd/domain"
 	user "awsManager/api/user/cmd/model"
 	"fmt"
 )
 
 type UserProjectFacade struct {
-	userService    domain.IService
-	projectService project.IService
+	userService    user_domain.IService
+	projectService project_domain.IService
 }
 
-func NewUserProjectFacade(userSvc domain.IService, projectSvc project.IService) *UserProjectFacade {
+func NewUserProjectFacade(userSvc user_domain.IService, projectSvc project_domain.IService) *UserProjectFacade {
 	return &UserProjectFacade{
 		userService:    userSvc,
 		projectService: projectSvc,

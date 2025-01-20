@@ -1,6 +1,8 @@
-package project
+package project_infrastructure
 
 import (
+	project "awsManager/api/project/cmd/model"
+
 	"gorm.io/gorm"
 )
 
@@ -12,13 +14,13 @@ func NewRepository(db *gorm.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) Save(project *Model) error {
+func (r *Repository) Save(project *project.Model) error {
 	result := r.db.Save(project)
 	return result.Error
 }
 
-func (r *Repository) FindById(id uint) (*Model, error) {
-	var project Model
+func (r *Repository) FindById(id uint) (*project.Model, error) {
+	var project project.Model
 	result := r.db.First(&project, id)
 	if result.Error != nil {
 		return nil, result.Error
@@ -26,8 +28,8 @@ func (r *Repository) FindById(id uint) (*Model, error) {
 	return &project, nil
 }
 
-func (r *Repository) FindByName(name string) (*Model, error) {
-	var project *Model
+func (r *Repository) FindByName(name string) (*project.Model, error) {
+	var project *project.Model
 	result := r.db.Where("name = ?", name).First(&project)
 	if result.Error != nil {
 		return nil, result.Error
@@ -35,20 +37,20 @@ func (r *Repository) FindByName(name string) (*Model, error) {
 	return project, nil
 }
 
-func (r *Repository) FindAll() ([]Model, error) {
-	var projects []Model
+func (r *Repository) FindAll() ([]project.Model, error) {
+	var projects []project.Model
 	if err := r.db.Find(&projects).Error; err != nil {
 		return nil, err
 	}
 	return projects, nil
 }
 
-func (r *Repository) Update(project *Model) error {
+func (r *Repository) Update(project *project.Model) error {
 	return r.db.Save(project).Error
 }
 
-func (r *Repository) DeleteById(id uint) (*Model, error) {
-	var project Model
+func (r *Repository) DeleteById(id uint) (*project.Model, error) {
+	var project project.Model
 	if err := r.db.First(&project, id).Error; err != nil {
 		return nil, err
 	}
@@ -59,7 +61,7 @@ func (r *Repository) DeleteById(id uint) (*Model, error) {
 }
 
 func (r *Repository) DeleteByName(name string) error {
-	result := r.db.Where("name = ?", name).Delete(&Model{})
+	result := r.db.Where("name = ?", name).Delete(&project.Model{})
 	if result.Error != nil {
 		return result.Error
 	}

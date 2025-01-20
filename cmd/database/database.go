@@ -1,7 +1,7 @@
 package database
 
 import (
-	project "awsManager/api/project/cmd"
+	project "awsManager/api/project/cmd/model"
 	subProject "awsManager/api/project/cmd/subProject/model"
 	user "awsManager/api/user/cmd/model"
 	"log"
