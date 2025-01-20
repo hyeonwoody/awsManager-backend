@@ -20,15 +20,26 @@ func NewHandler(projectSvc project_domain.IService, subProjectSvc subProject_dom
 }
 
 func (h *Handler) Create(c *gin.Context) {
-	name := c.Query("name")
-	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Name is required"})
+
+	var input struct {
+		Name            string `form:"name" binding:"required"`
+		AccountSuffix   string `form:"suffix" binding:"required"`
+		SubProjectName  string `form:"subProjectName"`
+		SubProjectGroup string `form:"subProjectGroup"`
+	}
+	if err := c.ShouldBindQuery(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	accountSuffix := c.Query("suffix")
-	project, err := h.projectSvc.Create(name, accountSuffix)
+	project, err := h.projectSvc.Create(input.Name, input.AccountSuffix)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Duplicated project name"})
+		return
+	}
+	if input.SubProjectName != "" {
+		h.subProjectSvc.Create(project.Id, input.SubProjectName, input.SubProjectGroup)
+		subProjectNames := h.subProjectSvc.FindByProjectId(project.Id)
+		c.JSON(http.StatusOK, gin.H{"project": project, "subProject": subProjectNames})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"project": project})
