@@ -6,5 +6,6 @@ import (
 
 type IService interface {
 	FindNextIndex(projectId uint) uint
-	Create(projectId, keyNubmber uint, password, accessKey, secretAccessKey string) (*user.Model, error)
+	Create(projectId, keyNubmber uint, projectName, password, accessKey, secretAccessKey string) (*user.Model, error)
+	FindByProjectIdAndKey(id uint, keyNumber uint) (*user.Model, error)
 }

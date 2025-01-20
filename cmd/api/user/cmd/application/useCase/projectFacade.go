@@ -5,7 +5,6 @@ import (
 	dto "awsManager/api/user/cmd/application/useCase/dto/in"
 	user_domain "awsManager/api/user/cmd/domain"
 	user "awsManager/api/user/cmd/model"
-	"fmt"
 )
 
 type UserProjectFacade struct {
@@ -32,8 +31,8 @@ func (f *UserProjectFacade) FindNextIndex(projectName string) (uint, error) {
 func (f *UserProjectFacade) CreateUser(input dto.CreateUserCommand) (*user.Model, error) {
 	project, err := f.projectService.FindByName(input.ProjectName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find Project: %w", err)
+		return nil, err
 	}
-	createdUser, err := f.userService.Create(project.Id, input.KeyNumber, input.Password, input.AccessKey, input.AccessKey)
+	createdUser, err := f.userService.Create(project.Id, input.KeyNumber, input.ProjectName, input.Password, input.AccessKey, input.AccessKey)
 	return createdUser, err
 }

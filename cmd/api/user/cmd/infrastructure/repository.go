@@ -38,3 +38,13 @@ func (r *Repository) FindNextIndex(projectId uint) uint {
 	}
 	return nextIndex
 }
+
+func (r *Repository) FindByProjectIdAndKey(projectId uint, keyNumber uint) (*user.Model, error) {
+	var user user.Model
+	result := r.db.Table("user").Where("project_id = ? AND key_number = ?", projectId, keyNumber).
+		First(&user)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &user, nil
+}

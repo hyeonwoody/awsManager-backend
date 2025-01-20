@@ -8,6 +8,7 @@ import (
 	subProject_infrastructure "awsManager/api/project/cmd/subProject/infrastructure"
 	userUseCase "awsManager/api/user/cmd/application/useCase"
 
+	user_business "awsManager/api/user/cmd/business"
 	user_domain "awsManager/api/user/cmd/domain"
 	user_infrastructure "awsManager/api/user/cmd/infrastructure"
 	user_presentation "awsManager/api/user/cmd/presentation"
@@ -21,6 +22,7 @@ import (
 
 type Container struct {
 	UserRepository user_infrastructure.IRepository
+	UserBusiness   user_business.IBusiness
 	UserService    user_domain.IService
 	UserHandler    user_presentation.IHandler
 
@@ -44,7 +46,8 @@ func (c *Container) Init(db *gorm.DB) {
 	c.SubProjectRepository = subProject_infrastructure.NewRepository(db)
 	c.Ec2Repository = ec2_infrastructure.NewRepository(db)
 
-	c.UserService = user_domain.NewService(c.UserRepository)
+	c.UserBusiness = user_business.NewBusiness()
+	c.UserService = user_domain.NewService(c.UserBusiness, c.UserRepository)
 	c.ProjectService = project_domain.NewService(c.ProjectRepository)
 	c.SubProjectService = subProject_domain.NewService(c.SubProjectRepository)
 
