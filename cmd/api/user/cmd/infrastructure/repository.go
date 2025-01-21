@@ -31,12 +31,12 @@ func (r *Repository) FindById(id uint) (*user.Model, error) {
 func (r *Repository) FindNextIndex(projectId uint) uint {
 	var nextIndex uint
 	result := r.db.Table("user").Where("project_id = ?", projectId).
-		Select("COALESCE(MAX(key_number), 0)").
+		Select("COALESCE(MAX(key_number), -1)").
 		Scan(&nextIndex)
 	if result.Error != nil {
 		return 0
 	}
-	return nextIndex
+	return nextIndex + 1
 }
 
 func (r *Repository) FindByProjectIdAndKey(projectId uint, keyNumber uint) (*user.Model, error) {
