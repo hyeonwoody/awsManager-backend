@@ -9,10 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// "net/http"
-
-//"fmt"
-
 type Handler struct {
 	projectFcd useCase.IUserProjectFacade
 	svc        domain.IService
@@ -54,4 +50,22 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"user": createdUser})
+}
+
+func (h *Handler) FindInstanceOff(c *gin.Context) {
+	projectName := c.Query("projectName")
+	if projectName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "projectName is required"})
+		return
+	}
+	instanceOffUser, err := h.projectFcd.FindInstanceOff(projectName)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	keyNumbers := make([]uint, len(instanceOffUser))
+	for i, user := range instanceOffUser {
+		keyNumbers[i] = user.KeyNumber
+	}
+	c.JSON(http.StatusOK, gin.H{"userKeyNumbers": keyNumbers})
 }

@@ -48,3 +48,13 @@ func (r *Repository) FindByProjectIdAndKey(projectId uint, keyNumber uint) (*use
 	}
 	return &user, nil
 }
+
+func (r *Repository) FindInstanceOff(projectId uint) ([]user.Model, error) {
+	var users []user.Model
+
+	if err := r.db.Table("user").Where("project_id = ? AND ec2_instance_id IS NULL", projectId).
+		Find(&users).Error; err != nil {
+		return nil, err
+	}
+	return users, nil
+}

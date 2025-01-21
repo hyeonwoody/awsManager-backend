@@ -8,4 +8,5 @@ import (
 type IUserProjectFacade interface {
 	FindNextIndex(projectName string) (uint, error)
 	CreateUser(input dto.CreateUserCommand) (*user.Model, error)
+	FindInstanceOff(projectName string) ([]user.Model, error)
 }

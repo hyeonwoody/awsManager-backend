@@ -39,3 +39,11 @@ func (s *Service) FindByProjectIdAndKey(id uint, keyNumber uint) (*user.Model, e
 	}
 	return user, err
 }
+
+func (s *Service) FindInstanceOff(projectId uint) ([]user.Model, error) {
+	user, err := s.repo.FindInstanceOff(projectId)
+	if user == nil {
+		return user, fmt.Errorf("failed to find user: %w", err)
+	}
+	return user, err
+}

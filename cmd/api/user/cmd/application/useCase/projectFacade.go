@@ -36,3 +36,12 @@ func (f *UserProjectFacade) CreateUser(input dto.CreateUserCommand) (*user.Model
 	createdUser, err := f.userService.Create(project.Id, input.KeyNumber, input.ProjectName, input.Password, input.AccessKey, input.AccessKey)
 	return createdUser, err
 }
+
+func (f *UserProjectFacade) FindInstanceOff(projectName string) ([]user.Model, error) {
+	project, err := f.projectService.FindByName(projectName)
+	if err != nil {
+		return nil, err
+	}
+	user, err := f.userService.FindInstanceOff(project.Id)
+	return user, err
+}
