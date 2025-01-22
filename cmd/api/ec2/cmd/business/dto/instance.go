@@ -1,6 +1,7 @@
 package ec2_dto
 
 import (
+	domainDto "awsManager/api/ec2/cmd/domain/dto"
 	ec2 "awsManager/api/ec2/cmd/model"
 )
 
@@ -18,7 +19,7 @@ func Ec2InstanceFrom(instanceId, publicIp, privateIp string) *Ec2Instance {
 	}
 }
 
-func ModelFrom(command *CreateCommand, ec2Instance *Ec2Instance) *ec2.Model {
+func ModelFrom(command *domainDto.CreateCommand, ec2Instance *Ec2Instance) *ec2.Model {
 	return &ec2.Model{
 		InstanceId: ec2Instance.InstanceId,
 		ProjectId:  command.ProjectId,

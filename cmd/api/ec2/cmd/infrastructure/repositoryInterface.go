@@ -7,6 +7,7 @@ import (
 type IRepository interface {
 	Save(ec2 *ec2.Model) (*ec2.Model, error)
 	DeleteByIdAndKeyNumber(projectId uint, KeyNumber uint) error
+	FindByInstanceId(instanceId *string) (*ec2.Model, error)
 	// FindAll() ([]User, error)
 	// Update(user *User) error
 	// DeleteById(id uint) (*User, error)

@@ -29,3 +29,10 @@ func (r *Repository) DeleteByIdAndKeyNumber(projectId, keyNumber uint) error {
 	}
 	return nil
 }
+
+func (r *Repository) FindByInstanceId(instanceId *string) (*ec2.Model, error) {
+	var ec2 ec2.Model
+	result := r.db.Table("ec2").Where("instance_id = ?", instanceId).
+		First(&ec2)
+	return &ec2, result.Error
+}

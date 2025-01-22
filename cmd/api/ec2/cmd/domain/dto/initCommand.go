@@ -1,4 +1,4 @@
-package ec2_dto
+package ec2_domain_dto_in
 
 import "strconv"
 
@@ -9,6 +9,6 @@ type InitWithPublicIpCommand struct {
 
 func InitWithPublicIpCommandFrom(publicIp, projectName string, keyNumber uint) *InitWithPublicIpCommand {
 	return &InitWithPublicIpCommand{
-		PrivateKeyName: publicIp + strconv.FormatUint(uint64(keyNumber), 10),
+		PrivateKeyName: projectName + strconv.FormatUint(uint64(keyNumber), 10),
 		PublicIp:       publicIp}
 }

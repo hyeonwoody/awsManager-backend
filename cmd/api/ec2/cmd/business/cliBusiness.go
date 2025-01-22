@@ -1,7 +1,8 @@
 package ec2_business
 
 import (
-	dto "awsManager/api/ec2/cmd/dto"
+	dto "awsManager/api/ec2/cmd/business/dto"
+	domainDto "awsManager/api/ec2/cmd/domain/dto"
 	"fmt"
 	"os"
 	"os/user"
@@ -16,11 +17,11 @@ func NewCliBusiness() *CliBusiness {
 	return &CliBusiness{}
 }
 
-func (b *CliBusiness) Create(command *dto.CreateCommand) (*dto.Ec2Instance, error) {
+func (b *CliBusiness) Create(command *domainDto.CreateCommand) (*dto.Ec2Instance, error) {
 	panic("Not Implemented")
 }
 
-func (b *CliBusiness) InitWithPublicIp(command *dto.InitWithPublicIpCommand) error {
+func (b *CliBusiness) InitWithPublicIp(command *domainDto.InitWithPublicIpCommand) error {
 	config, err := createSshClientConfig(command)
 	if err != nil {
 		return err
@@ -32,10 +33,14 @@ func (b *CliBusiness) InitWithPublicIp(command *dto.InitWithPublicIpCommand) err
 	}
 	session, err := openSshSession(client)
 	if err != nil {
+		//HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
 		return fmt.Errorf("failed to create session")
 	}
 
 	swapfileErr := createSwapfile(session, client)
+
+	deferClose(session, client)
+
 	return swapfileErr
 }
 
@@ -87,11 +92,10 @@ func openSshSession(client *ssh.Client) (*ssh.Session, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open new ssh sesion %s", err)
 	}
-	defer session.Close()
 	return session, err
 }
 
-func createSshClientConfig(command *dto.InitWithPublicIpCommand) (*ssh.ClientConfig, error) {
+func createSshClientConfig(command *domainDto.InitWithPublicIpCommand) (*ssh.ClientConfig, error) {
 	targetUser, err := user.Lookup("projectManager")
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user")
@@ -117,15 +121,19 @@ func createSshClientConfig(command *dto.InitWithPublicIpCommand) (*ssh.ClientCon
 	return config, nil
 }
 
-func establishSshConnection(command *dto.InitWithPublicIpCommand, config *ssh.ClientConfig) (*ssh.Client, error) {
+func establishSshConnection(command *domainDto.InitWithPublicIpCommand, config *ssh.ClientConfig) (*ssh.Client, error) {
 	client, err := ssh.Dial("tcp", command.PublicIp+":22", config)
 	if err != nil {
 		//handle error
 	}
-	defer client.Close()
 	return client, nil
 }
 
-func (b *CliBusiness) Delete(command *dto.DeleteCommand) error {
+func (b *CliBusiness) Delete(command *domainDto.DeleteCommand) error {
 	panic("Not Implemented")
+}
+
+func deferClose(session *ssh.Session, client *ssh.Client) {
+	defer session.Close()
+	defer client.Close()
 }

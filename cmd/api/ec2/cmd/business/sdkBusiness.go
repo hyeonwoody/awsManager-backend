@@ -1,7 +1,8 @@
 package ec2_business
 
 import (
-	dto "awsManager/api/ec2/cmd/dto"
+	dto "awsManager/api/ec2/cmd/business/dto"
+	domainDto "awsManager/api/ec2/cmd/domain/dto"
 	"context"
 	"fmt"
 	"io"
@@ -26,7 +27,7 @@ func NewSdkBusiness() *SdkBusiness {
 	return &SdkBusiness{}
 }
 
-func (b *SdkBusiness) Delete(command *dto.DeleteCommand) error {
+func (b *SdkBusiness) Delete(command *domainDto.DeleteCommand) error {
 	ctx := context.Background()
 	client, err := getAsyncClient(ctx, &command.AccessKey, &command.SecretAccessKey)
 	if err != nil {
@@ -42,7 +43,7 @@ func (b *SdkBusiness) Delete(command *dto.DeleteCommand) error {
 	return nil
 }
 
-func (b *SdkBusiness) Create(command *dto.CreateCommand) (*dto.Ec2Instance, error) {
+func (b *SdkBusiness) Create(command *domainDto.CreateCommand) (*dto.Ec2Instance, error) {
 	ctx := context.Background()
 
 	client, err := getAsyncClient(ctx, &command.AccessKey, &command.SecretAccessKey)
@@ -63,7 +64,7 @@ func (b *SdkBusiness) Create(command *dto.CreateCommand) (*dto.Ec2Instance, erro
 	return instance, nil
 }
 
-func runInstanceAsync(ctx context.Context, client *ec2.Client, command *dto.CreateCommand) (string, error) {
+func runInstanceAsync(ctx context.Context, client *ec2.Client, command *domainDto.CreateCommand) (string, error) {
 
 	var keyName = command.ProjectName + strconv.Itoa(int(command.KeyNumber))
 	input := &ec2.RunInstancesInput{
@@ -100,7 +101,7 @@ func runInstanceAsync(ctx context.Context, client *ec2.Client, command *dto.Crea
 	return instanceId, nil
 }
 
-func getInstance(ctx context.Context, client *ec2.Client, command *dto.CreateCommand, instanceId string) (*dto.Ec2Instance, error) {
+func getInstance(ctx context.Context, client *ec2.Client, command *domainDto.CreateCommand, instanceId string) (*dto.Ec2Instance, error) {
 	describeInput := &ec2.DescribeInstancesInput{
 		InstanceIds: []string{instanceId},
 	}
@@ -306,6 +307,6 @@ func getMyPublicIP() string {
 	return strings.TrimSpace(string(ip) + "/32")
 }
 
-func (b *SdkBusiness) InitWithPublicIp(command *dto.InitWithPublicIpCommand) error {
+func (b *SdkBusiness) InitWithPublicIp(command *domainDto.InitWithPublicIpCommand) error {
 	panic("Not Implemented")
 }

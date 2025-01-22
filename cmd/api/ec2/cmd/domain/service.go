@@ -2,7 +2,8 @@ package ec2_domain
 
 import (
 	ec2Businses "awsManager/api/ec2/cmd/business"
-	dto "awsManager/api/ec2/cmd/dto"
+	businessDto "awsManager/api/ec2/cmd/business/dto"
+	dto "awsManager/api/ec2/cmd/domain/dto"
 	ec2Infrastructure "awsManager/api/ec2/cmd/infrastructure"
 	ec2 "awsManager/api/ec2/cmd/model"
 )
@@ -32,7 +33,7 @@ func (s *Service) Create(command *dto.CreateCommand) (*ec2.Model, error) {
 		return nil, err
 	}
 	//s.Init(ec2Instance)
-	ec2, err := s.repo.Save(dto.ModelFrom(command, ec2Instance))
+	ec2, err := s.repo.Save(businessDto.ModelFrom(command, ec2Instance))
 	if err != nil {
 		return nil, err
 	}
@@ -42,4 +43,12 @@ func (s *Service) Create(command *dto.CreateCommand) (*ec2.Model, error) {
 func (s *Service) Init(command *dto.InitWithPublicIpCommand) (*ec2.Model, error) {
 	s.cliBiz.InitWithPublicIp(command)
 	return nil, nil
+}
+
+func (s *Service) FindByInstanceId(instanceId *string) (*ec2.Model, error) {
+	ec2, err := s.repo.FindByInstanceId(instanceId)
+	if err != nil {
+		return nil, err
+	}
+	return ec2, nil
 }

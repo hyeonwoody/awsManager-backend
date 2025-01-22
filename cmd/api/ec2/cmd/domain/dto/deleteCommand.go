@@ -1,4 +1,4 @@
-package ec2_dto
+package ec2_domain_dto_in
 
 type DeleteCommand struct {
 	ProjectId       uint   `form:"projectId"`

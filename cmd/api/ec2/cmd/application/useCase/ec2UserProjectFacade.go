@@ -1,10 +1,9 @@
 package ec2_useCase
 
 import (
-	useCasedto "awsManager/api/ec2/cmd/application/useCase/dto/in"
+	useCaseDto "awsManager/api/ec2/cmd/application/useCase/dto/in"
 	ec2Domain "awsManager/api/ec2/cmd/domain"
-	dto "awsManager/api/ec2/cmd/dto"
-	ec2 "awsManager/api/ec2/cmd/model"
+	ec2DomainDto "awsManager/api/ec2/cmd/domain/dto"
 	projectDomain "awsManager/api/project/cmd/domain"
 	userDomain "awsManager/api/user/cmd/domain"
 )
@@ -23,7 +22,7 @@ func NewEc2UserProjectFacade(ec2Svc ec2Domain.IService, userSvc userDomain.IServ
 	}
 }
 
-func (f *Ec2UserProjectFacade) Init(command *useCasedto.InitEc2Command) (*ec2.Model, error) {
+func (f *Ec2UserProjectFacade) Create(command *useCaseDto.CreateEc2Command) (interface{}, error) {
 	project, err := f.projectSvc.FindByName(command.ProjectName)
 	if err != nil {
 		return nil, err
@@ -36,18 +35,29 @@ func (f *Ec2UserProjectFacade) Init(command *useCasedto.InitEc2Command) (*ec2.Mo
 	// 	return nil, fmt.Errorf("user already have instance")
 	// }
 	//ec2Err :=
-	f.ec2Svc.DeleteExist(dto.DeleteCommandFrom(project.Name, user.AccessKey, user.SecretAccessKey, project.Id, user.KeyNumber))
+	f.ec2Svc.DeleteExist(ec2DomainDto.DeleteCommandFrom(project.Name, user.AccessKey, user.SecretAccessKey, project.Id, user.KeyNumber))
 	// if ec2Err != nil {
 	// 	return nil, err
 	// }
-	ec2, err := f.ec2Svc.Create(dto.CreateCommandFrom(project.Name, command.Ami, command.InstanceType, user.AccessKey, user.SecretAccessKey, project.Id, user.KeyNumber))
+	ec2, err := f.ec2Svc.Create(ec2DomainDto.CreateCommandFrom(project.Name, command.Ami, command.InstanceType, user.AccessKey, user.SecretAccessKey, project.Id, user.KeyNumber))
 	if err != nil {
 		return nil, err
 	}
 	user.Ec2InstanceId = ec2.InstanceId
 	f.userSvc.Save(user)
 
-	f.ec2Svc.Init(dto.InitWithPublicIpCommandFrom(ec2.PublicIp, project.Name, user.KeyNumber))
+	f.ec2Svc.Init(ec2DomainDto.InitWithPublicIpCommandFrom(ec2.PublicIp, project.Name, user.KeyNumber))
 
 	return ec2, nil
+}
+
+func (f *Ec2UserProjectFacade) Init(command *useCaseDto.InitEc2Command) (interface{}, error) {
+	ec2, err := f.ec2Svc.FindByInstanceId(&command.InstanceId)
+	project, err := f.projectSvc.Read(ec2.ProjectId)
+
+	f.ec2Svc.Init(ec2DomainDto.InitWithPublicIpCommandFrom(ec2.PublicIp, project.Name, ec2.KeyNumber))
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
 }
