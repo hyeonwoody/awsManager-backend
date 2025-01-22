@@ -26,14 +26,28 @@ func NewBusiness() *Business {
 	return &Business{}
 }
 
+func getClient(command *any) {
+	command.
+}
+
+func (i IBusiness) Delete(command *dto.DeleteCommand) {
+	
+}
+
 func (b *Business) Create(command *dto.CreateCommand) (*dto.Ec2Instance, error) {
 	ctx := context.Background()
-	instanceId, err := runInstanceAsync(ctx, command)
+
+	client, err := getAsyncClient(ctx, command)
+	if err != nil {
+		return "", err
+	}
+
+	instanceId, err := runInstanceAsync(ctx, client, command)
 	if err != nil {
 		return nil, err
 	}
 
-	instance, err := getInstance(ctx, command, instanceId)
+	instance, err := getInstance(ctx, client, command, instanceId)
 	if err != nil {
 		return nil, err
 	}
@@ -41,12 +55,8 @@ func (b *Business) Create(command *dto.CreateCommand) (*dto.Ec2Instance, error) 
 	return instance, nil
 }
 
-func runInstanceAsync(ctx context.Context, command *dto.CreateCommand) (string, error) {
-	client, err := getAsyncClient(ctx, command)
-	if err != nil {
-		return "", err
-	}
-
+func runInstanceAsync(ctx context.Context, client *ec2.Client, command *dto.CreateCommand) (string, error) {
+	
 	err = terminateExistInstances(ctx, client)
 	if err != nil {
 		return "", fmt.Errorf("failed to terminate existing instances : %w", err)
@@ -87,12 +97,7 @@ func runInstanceAsync(ctx context.Context, command *dto.CreateCommand) (string, 
 	return instanceId, nil
 }
 
-func getInstance(ctx context.Context, command *dto.CreateCommand, instanceId string) (*dto.Ec2Instance, error) {
-	client, err := getAsyncClient(ctx, command)
-	if err != nil {
-		return nil, err
-	}
-
+func getInstance(ctx context.Context, client *ec2.Client, command *dto.CreateCommand, instanceId string) (*dto.Ec2Instance, error) {
 	describeInput := &ec2.DescribeInstancesInput{
 		InstanceIds: []string{instanceId},
 	}
