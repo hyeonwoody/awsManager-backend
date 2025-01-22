@@ -7,7 +7,6 @@ import (
 	ec2 "awsManager/api/ec2/cmd/model"
 	projectDomain "awsManager/api/project/cmd/domain"
 	userDomain "awsManager/api/user/cmd/domain"
-	"fmt"
 )
 
 type Ec2UserProjectFacade struct {
@@ -33,15 +32,22 @@ func (f *Ec2UserProjectFacade) Init(command *useCasedto.InitEc2Command) (*ec2.Mo
 	if err != nil {
 		return nil, err
 	}
-	if user.Ec2InstanceId != "" {
-		return nil, fmt.Errorf("user already have instance")
-	}
-
+	// if user.Ec2InstanceId != "" {
+	// 	return nil, fmt.Errorf("user already have instance")
+	// }
+	//ec2Err :=
+	f.ec2Svc.DeleteExist(dto.DeleteCommandFrom(project.Name, user.AccessKey, user.SecretAccessKey, project.Id, user.KeyNumber))
+	// if ec2Err != nil {
+	// 	return nil, err
+	// }
 	ec2, err := f.ec2Svc.Create(dto.CreateCommandFrom(project.Name, command.Ami, command.InstanceType, user.AccessKey, user.SecretAccessKey, project.Id, user.KeyNumber))
 	if err != nil {
 		return nil, err
 	}
 	user.Ec2InstanceId = ec2.InstanceId
-	go f.userSvc.Save(user)
+	f.userSvc.Save(user)
+
+	f.ec2Svc.Init(dto.InitWithPublicIpCommandFrom(ec2.PublicIp, project.Name, user.KeyNumber))
+
 	return ec2, nil
 }

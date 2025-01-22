@@ -18,3 +18,14 @@ func (r *Repository) Save(ec2 *ec2.Model) (*ec2.Model, error) {
 	result := r.db.Save(ec2)
 	return ec2, result.Error
 }
+
+func (r *Repository) DeleteByIdAndKeyNumber(projectId, keyNumber uint) error {
+	result := r.db.Where("project_id = ? AND key_number = ?", projectId, keyNumber).Delete(&ec2.Model{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
