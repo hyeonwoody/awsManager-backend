@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type InstanceType int
 
 const (
@@ -7,10 +9,16 @@ const (
 )
 
 type Model struct {
-	ProjectId uint `gorm:"primaryKey;not null"`
-	KeyNumber uint `gorm:"primaryKey;not null"`
+	InstanceId string    `gorm:"primaryKey;not null"`
+	ProjectId  uint      `gorm:"not null"`
+	KeyNumber  uint      `gorm:"not null"`
+	Ami        string    `gorm:"not null"`
+	PublicIp   string    `gorm:"not null"`
+	PrivateIp  string    `gorm:"not null"`
+	CicdOn     bool      `gorm:"not null"`
+	CreatedAt  time.Time `gorm:"autoCreateTime"`
 }
 
-func (it *InstanceType) Int() int {
-	return int(*it)
+func (Model) TableName() string {
+	return "ec2"
 }
