@@ -47,3 +47,8 @@ func (s *Service) FindInstanceOff(projectId uint) ([]user.Model, error) {
 	}
 	return user, err
 }
+
+func (s *Service) Save(user *user.Model) error {
+	s.repo.Save(user)
+	return nil
+}
