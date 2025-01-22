@@ -8,16 +8,26 @@ import (
 )
 
 type Service struct {
-	biz  ec2Businses.IBusiness
-	repo ec2Infrastructure.IRepository
+	sdkBiz ec2Businses.IBusiness
+	cliBiz ec2Businses.IBusiness
+	repo   ec2Infrastructure.IRepository
 }
 
-func NewService(biz ec2Businses.IBusiness, repo ec2Infrastructure.IRepository) *Service {
-	return &Service{biz: biz, repo: repo}
+func NewService(sdkBiz ec2Businses.IBusiness, cliBiz ec2Businses.IBusiness, repo ec2Infrastructure.IRepository) *Service {
+	return &Service{sdkBiz: sdkBiz, cliBiz: cliBiz, repo: repo}
+}
+
+func (s *Service) DeleteExist(command *dto.DeleteCommand) error {
+	s.sdkBiz.Delete(command)
+	err := s.repo.DeleteByIdAndKeyNumber(command.ProjectId, command.KeyNumber)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Service) Create(command *dto.CreateCommand) (*ec2.Model, error) {
-	ec2Instance, err := s.biz.Create(command)
+	ec2Instance, err := s.sdkBiz.Create(command)
 	if err != nil {
 		return nil, err
 	}
@@ -29,6 +39,7 @@ func (s *Service) Create(command *dto.CreateCommand) (*ec2.Model, error) {
 	return ec2, nil
 }
 
-func (s *Service) Init(ec2Instance *dto.Ec2Instance) {
-	s.biz.Init(ec2Instance)
+func (s *Service) Init(command *dto.InitWithPublicIpCommand) (*ec2.Model, error) {
+	s.cliBiz.InitWithPublicIp(command)
+	return nil, nil
 }

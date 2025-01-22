@@ -19,27 +19,35 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 )
 
-type Business struct {
+type SdkBusiness struct {
 }
 
-func NewBusiness() *Business {
-	return &Business{}
+func NewSdkBusiness() *SdkBusiness {
+	return &SdkBusiness{}
 }
 
-func getClient(command *any) {
-	command.
+func (b *SdkBusiness) Delete(command *dto.DeleteCommand) error {
+	ctx := context.Background()
+	client, err := getAsyncClient(ctx, &command.AccessKey, &command.SecretAccessKey)
+	if err != nil {
+		return err
+	}
+
+	err = terminateExistInstances(ctx, client)
+	if err != nil {
+		return fmt.Errorf("failed to terminate existing instances : %w", err)
+	}
+	var keyName = command.ProjectName + strconv.Itoa(int(command.KeyNumber))
+	deleteExistKeyPair(keyName, client)
+	return nil
 }
 
-func (i IBusiness) Delete(command *dto.DeleteCommand) {
-	
-}
-
-func (b *Business) Create(command *dto.CreateCommand) (*dto.Ec2Instance, error) {
+func (b *SdkBusiness) Create(command *dto.CreateCommand) (*dto.Ec2Instance, error) {
 	ctx := context.Background()
 
-	client, err := getAsyncClient(ctx, command)
+	client, err := getAsyncClient(ctx, &command.AccessKey, &command.SecretAccessKey)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	instanceId, err := runInstanceAsync(ctx, client, command)
@@ -56,11 +64,6 @@ func (b *Business) Create(command *dto.CreateCommand) (*dto.Ec2Instance, error) 
 }
 
 func runInstanceAsync(ctx context.Context, client *ec2.Client, command *dto.CreateCommand) (string, error) {
-	
-	err = terminateExistInstances(ctx, client)
-	if err != nil {
-		return "", fmt.Errorf("failed to terminate existing instances : %w", err)
-	}
 
 	var keyName = command.ProjectName + strconv.Itoa(int(command.KeyNumber))
 	input := &ec2.RunInstancesInput{
@@ -118,14 +121,14 @@ func getInstance(ctx context.Context, client *ec2.Client, command *dto.CreateCom
 	}
 }
 
-func getAsyncClient(ctx context.Context, command *dto.CreateCommand) (*ec2.Client, error) {
+func getAsyncClient(ctx context.Context, accessKey, secretAccessKey *string) (*ec2.Client, error) {
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion("ap-northeast-2"),
 		config.WithRetryMaxAttempts(3),
 		config.WithRetryMode(aws.RetryModeStandard),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-			command.AccessKey,
-			command.SecretAccessKey,
+			*accessKey,
+			*secretAccessKey,
 			"",
 		)),
 	)
@@ -166,9 +169,6 @@ func terminateExistInstances(ctx context.Context, client *ec2.Client) error {
 }
 
 func createKeyPair(client *ec2.Client, keyName string) string {
-
-	deleteExistKeyPair(keyName, client)
-
 	input := &ec2.CreateKeyPairInput{
 		KeyName: aws.String(keyName),
 	}
@@ -306,6 +306,6 @@ func getMyPublicIP() string {
 	return strings.TrimSpace(string(ip) + "/32")
 }
 
-func (b *Business) Init(instance *dto.Ec2Instance) (*dto.Ec2Instance, error) {
-	return nil, nil
+func (b *SdkBusiness) InitWithPublicIp(command *dto.InitWithPublicIpCommand) error {
+	panic("Not Implemented")
 }

@@ -7,4 +7,6 @@ import (
 
 type IService interface {
 	Create(command *dto.CreateCommand) (*ec2.Model, error)
+	DeleteExist(command *dto.DeleteCommand) error
+	Init(command *dto.InitWithPublicIpCommand) (*ec2.Model, error)
 }
