@@ -9,12 +9,12 @@ import (
 )
 
 type Service struct {
-	sdkBiz ec2Businses.IBusiness
-	cliBiz ec2Businses.IBusiness
+	sdkBiz ec2Businses.SdkBusiness
+	cliBiz ec2Businses.CliBusiness
 	repo   ec2Infrastructure.IRepository
 }
 
-func NewService(sdkBiz ec2Businses.IBusiness, cliBiz ec2Businses.IBusiness, repo ec2Infrastructure.IRepository) *Service {
+func NewService(sdkBiz ec2Businses.SdkBusiness, cliBiz ec2Businses.CliBusiness, repo ec2Infrastructure.IRepository) *Service {
 	return &Service{sdkBiz: sdkBiz, cliBiz: cliBiz, repo: repo}
 }
 

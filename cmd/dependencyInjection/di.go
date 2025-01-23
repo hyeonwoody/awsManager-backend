@@ -38,8 +38,8 @@ type Container struct {
 	UserProjectFacade userUseCase.IUserProjectFacade
 
 	Ec2Repository  ec2_infrastructure.IRepository
-	Ec2SdkBusiness ec2_business.IBusiness
-	Ec2CliBusiness ec2_business.IBusiness
+	Ec2SdkBusiness *ec2_business.SdkBusiness
+	Ec2CliBusiness *ec2_business.CliBusiness
 	Ec2Service     ec2_domain.IService
 	Ec2Handler     ec2_presentation.IHandler
 
@@ -64,7 +64,7 @@ func (c *Container) Init(db *gorm.DB) {
 
 	c.Ec2SdkBusiness = ec2_business.NewSdkBusiness()
 	c.Ec2CliBusiness = ec2_business.NewCliBusiness()
-	c.Ec2Service = ec2_domain.NewService(c.Ec2SdkBusiness, c.Ec2CliBusiness, c.Ec2Repository)
+	c.Ec2Service = ec2_domain.NewService(*c.Ec2SdkBusiness, *c.Ec2CliBusiness, c.Ec2Repository)
 
 	c.Ec2UserProjectFacade = ec2UseCase.NewEc2UserProjectFacade(c.Ec2Service, c.UserService, c.ProjectService)
 
