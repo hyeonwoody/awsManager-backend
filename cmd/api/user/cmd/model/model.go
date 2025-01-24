@@ -23,16 +23,16 @@ func (Model) TableName() string {
 }
 
 func (u *Model) BeforeSave(tx *gorm.DB) (err error) {
-	if u.KeyNumber != 0 {
-		return
+	if u.KeyNumber == 0 {
+		return nil
 	}
-	var maxKeyNumber uint
+	var maxKeyNumber int
 	if err := tx.Model(&Model{}).
 		Where("project_id = ?", u.ProjectId).
-		Select("COALESCE(MAX(key_number), -1)").
+		Select("COALESCE(MAX(key_number), 0)").
 		Scan(&maxKeyNumber).Error; err != nil {
 		return err
 	}
-	u.KeyNumber = maxKeyNumber + 1
+	u.KeyNumber = uint(maxKeyNumber) + 1
 	return nil
 }
