@@ -27,8 +27,12 @@ func (s *Service) DeleteExist(command *dto.DeleteCommand) error {
 	return nil
 }
 
-func (s *Service) Create(command *dto.CreateCommand) (*ec2.Model, error) {
-	ec2Instance, err := s.sdkBiz.Create(command)
+func (s *Service) Create(command *dto.CreateCommand) (*ec2Model.Model, error) {
+	client, err := s.sdkBiz.GetAsyncClient(&command.AccessKey, &command.SecretAccessKey)
+	if err != nil {
+		return nil, err
+	}
+	ec2Instance, err := s.sdkBiz.Create(command, client)
 	if err != nil {
 		return nil, err
 	}

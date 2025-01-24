@@ -46,7 +46,7 @@ func (f *Ec2UserProjectFacade) Create(command *useCaseDto.CreateEc2Command) (int
 	user.Ec2InstanceId = ec2.InstanceId
 	f.userSvc.Save(user)
 
-	f.ec2Svc.Init(ec2DomainDto.InitWithPublicIpCommandFrom(ec2.PublicIp, project.Name, user.KeyNumber))
+	//f.ec2Svc.AddMemory(ec2DomainDto.AddMemoryCommandFrom(ec2.PublicIp, project.Name, user.KeyNumber))
 
 	return ec2, nil
 }
