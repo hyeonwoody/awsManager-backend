@@ -2,6 +2,7 @@ package user_infrastructure
 
 import (
 	user "awsManager/api/user/cmd/model"
+	"fmt"
 
 	"gorm.io/gorm"
 )
@@ -29,14 +30,17 @@ func (r *Repository) FindById(id uint) (*user.Model, error) {
 }
 
 func (r *Repository) FindNextIndex(projectId uint) uint {
-	var nextIndex uint
+	var nextIndex int
 	result := r.db.Table("user").Where("project_id = ?", projectId).
-		Select("COALESCE(MAX(key_number), -1)").
+		Select("COALESCE(MAX(key_number), 0)").
 		Scan(&nextIndex)
 	if result.Error != nil {
 		return 0
 	}
-	return nextIndex + 1
+	if nextIndex == 0 {
+		return 0
+	}
+	return uint(nextIndex) + 1
 }
 
 func (r *Repository) FindByProjectIdAndKey(projectId uint, keyNumber uint) (*user.Model, error) {
@@ -57,4 +61,15 @@ func (r *Repository) FindInstanceOff(projectId uint) ([]user.Model, error) {
 		return nil, err
 	}
 	return users, nil
+}
+
+func (r *Repository) Update(user *user.Model) error {
+	result := r.db.Table("user").Where("project_id = ? AND key_number = ?", user.ProjectId, user.KeyNumber).Updates(user)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("user not found")
+	}
+	return nil
 }

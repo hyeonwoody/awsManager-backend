@@ -49,6 +49,9 @@ func (s *Service) FindInstanceOff(projectId uint) ([]user.Model, error) {
 }
 
 func (s *Service) Save(user *user.Model) error {
-	s.repo.Save(user)
-	return nil
+	existingUser, err := s.repo.FindByProjectIdAndKey(user.ProjectId, user.KeyNumber)
+	if err != nil {
+		return s.repo.Save(user)
+	}
+	return s.repo.Update(existingUser)
 }
