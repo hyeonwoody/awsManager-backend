@@ -38,7 +38,7 @@ func (h *Handler) Init(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	ec2, err := h.ec2Fcd.Init(input)
+	ec2, err := h.ec2Fcd.AddMemory(input)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

@@ -22,12 +22,12 @@ func NewEc2UserProjectFacade(ec2Svc ec2Domain.IService, userSvc userDomain.IServ
 	}
 }
 
-func (f *Ec2UserProjectFacade) Create(command *useCaseDto.CreateEc2Command) (interface{}, error) {
-	project, err := f.projectSvc.FindByName(command.ProjectName)
+func (f *Ec2UserProjectFacade) Create(input *useCaseDto.CreateEc2Command) (interface{}, error) {
+	project, err := f.projectSvc.FindByName(input.ProjectName)
 	if err != nil {
 		return nil, err
 	}
-	user, err := f.userSvc.FindByProjectIdAndKey(project.Id, command.KeyNumber)
+	user, err := f.userSvc.FindByProjectIdAndKey(project.Id, input.KeyNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func (f *Ec2UserProjectFacade) Create(command *useCaseDto.CreateEc2Command) (int
 	// if ec2Err != nil {
 	// 	return nil, err
 	// }
-	ec2, err := f.ec2Svc.Create(ec2DomainDto.CreateCommandFrom(project.Name, command.Ami, command.InstanceType, user.AccessKey, user.SecretAccessKey, project.Id, user.KeyNumber))
+	ec2, err := f.ec2Svc.Create(ec2DomainDto.CreateCommandFrom(project.Name, input.Ami, input.InstanceType, user.AccessKey, user.SecretAccessKey, project.Id, user.KeyNumber))
 	if err != nil {
 		return nil, err
 	}

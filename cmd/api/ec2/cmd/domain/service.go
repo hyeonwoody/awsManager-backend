@@ -5,7 +5,10 @@ import (
 	businessDto "awsManager/api/ec2/cmd/business/dto"
 	dto "awsManager/api/ec2/cmd/domain/dto"
 	ec2Infrastructure "awsManager/api/ec2/cmd/infrastructure"
-	ec2 "awsManager/api/ec2/cmd/model"
+	ec2Model "awsManager/api/ec2/cmd/model"
+	"strconv"
+
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 )
 
 type Service struct {
@@ -19,6 +22,7 @@ func NewService(sdkBiz ec2Businses.SdkBusiness, cliBiz ec2Businses.CliBusiness, 
 }
 
 func (s *Service) DeleteExist(command *dto.DeleteCommand) error {
+	//ctx := s.sdkBiz.GetContext()
 	s.sdkBiz.Delete(command)
 	err := s.repo.DeleteByIdAndKeyNumber(command.ProjectId, command.KeyNumber)
 	if err != nil {
@@ -36,7 +40,6 @@ func (s *Service) Create(command *dto.CreateCommand) (*ec2Model.Model, error) {
 	if err != nil {
 		return nil, err
 	}
-	//s.Init(ec2Instance)
 	ec2, err := s.repo.Save(businessDto.ModelFrom(command, ec2Instance))
 	if err != nil {
 		return nil, err
@@ -44,12 +47,12 @@ func (s *Service) Create(command *dto.CreateCommand) (*ec2Model.Model, error) {
 	return ec2, nil
 }
 
-func (s *Service) Init(command *dto.InitWithPublicIpCommand) (*ec2.Model, error) {
-	s.cliBiz.InitWithPublicIp(command)
+func (s *Service) AddMemory(command *dto.AddMemoryCommand) (*ec2Model.Model, error) {
+	s.cliBiz.AddMemory(command)
 	return nil, nil
 }
 
-func (s *Service) FindByInstanceId(instanceId *string) (*ec2.Model, error) {
+func (s *Service) FindByInstanceId(instanceId *string) (*ec2Model.Model, error) {
 	ec2, err := s.repo.FindByInstanceId(instanceId)
 	if err != nil {
 		return nil, err

@@ -100,8 +100,8 @@ func (b *CliBusiness) Create(command *domainDto.CreateCommand) (*dto.Ec2Instance
 	panic("Not Implemented")
 }
 
-func (b *CliBusiness) InitWithPublicIp(command *domainDto.InitWithPublicIpCommand) error {
-	config, err := createSshClientConfig(command)
+func (b *CliBusiness) AddMemory(command *domainDto.AddMemoryCommand) error {
+	config, err := createSshClientConfig(&command.PrivateKeyName)
 	if err != nil {
 		return err
 	}
