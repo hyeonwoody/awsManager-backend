@@ -106,24 +106,25 @@ func (b *CliBusiness) AddMemory(command *domainDto.AddMemoryCommand) error {
 		return err
 	}
 
-	client, err := establishSshConnection(command, config)
+	client, err := establishSshConnection(&command.PublicIp, config)
 	if err != nil {
 		return fmt.Errorf("failed to dial : %s", err)
 	}
-	session, err := openSshSession(client)
-	if err != nil {
-		//HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-		return fmt.Errorf("failed to create session")
-	}
+	defer client.Close()
 
-	swapfileErr := createSwapfile(session, client)
-
-	deferClose(session, client)
+	swapfileErr := createSwapfile(client)
 
 	return swapfileErr
 }
 
-func createSwapfile(session *ssh.Session, client *ssh.Client) error {
+func createSwapfile(client *ssh.Client) error {
+
+	session, err := openSshSession(client)
+	if err != nil {
+		return fmt.Errorf("failed to create session: %s", err)
+	}
+	defer session.Close()
+
 	output, err := session.CombinedOutput("[ -f /swapfile ] && echo 'exists' || echo 'not exists'")
 	if err != nil {
 		return fmt.Errorf("failed to check /swapfile: %s", err)
@@ -131,12 +132,12 @@ func createSwapfile(session *ssh.Session, client *ssh.Client) error {
 	if string(output) == "not exists\n" {
 		// Create 2GB swap file
 		createSwapCmd := `
-		sudo dd if=/dev/zero of=/swapfile bs=128M count=16
-        sudo chmod 600 /swapfile
-        sudo mkswap /swapfile
-        sudo swapon /swapfile
+		sudo dd if=/dev/xvdm of=/mnt/xvdm/swapfile bs=128M count=64
+        sudo chmod 600 /mnt/xvdm/swapfile
+        sudo mkswap /mnt/xvdm/swapfile
+        sudo swapon /mnt/xvdm/swapfile
         `
-		session, err = client.NewSession()
+		session, err = openSshSession(client)
 		if err != nil {
 			return fmt.Errorf("failed to create session: %s", err)
 		}
@@ -148,8 +149,8 @@ func createSwapfile(session *ssh.Session, client *ssh.Client) error {
 		}
 
 		// Update /etc/fstab
-		updateFstabCmd := `echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab`
-		session, err = client.NewSession()
+		updateFstabCmd := `echo '/mnt/xvdm/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab`
+		session, err = openSshSession(client)
 		if err != nil {
 			return fmt.Errorf("failed to create session: %w", err)
 		}
@@ -163,6 +164,7 @@ func createSwapfile(session *ssh.Session, client *ssh.Client) error {
 
 		return fmt.Errorf("swap file created and /etc/fstab updated successfully")
 	}
+	fmt.Printf("Swap file already Exist")
 	return nil
 }
 
@@ -174,13 +176,13 @@ func openSshSession(client *ssh.Client) (*ssh.Session, error) {
 	return session, err
 }
 
-func createSshClientConfig(command *domainDto.InitWithPublicIpCommand) (*ssh.ClientConfig, error) {
+func createSshClientConfig(privateKeyName *string) (*ssh.ClientConfig, error) {
 	targetUser, err := user.Lookup("projectManager")
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user")
 	}
 	homeDir := targetUser.HomeDir
-	pemBytes, err := os.ReadFile(homeDir + "/" + command.PrivateKeyName + ".pem")
+	pemBytes, err := os.ReadFile(homeDir + "/" + *privateKeyName + ".pem")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read private key")
 	}
@@ -200,19 +202,10 @@ func createSshClientConfig(command *domainDto.InitWithPublicIpCommand) (*ssh.Cli
 	return config, nil
 }
 
-func establishSshConnection(command *domainDto.InitWithPublicIpCommand, config *ssh.ClientConfig) (*ssh.Client, error) {
-	client, err := ssh.Dial("tcp", command.PublicIp+":22", config)
+func establishSshConnection(publicIp *string, config *ssh.ClientConfig) (*ssh.Client, error) {
+	client, err := ssh.Dial("tcp", *publicIp+":22", config)
 	if err != nil {
 		//handle error
 	}
 	return client, nil
-}
-
-func (b *CliBusiness) Delete(command *domainDto.DeleteCommand) error {
-	panic("Not Implemented")
-}
-
-func deferClose(session *ssh.Session, client *ssh.Client) {
-	defer session.Close()
-	defer client.Close()
 }

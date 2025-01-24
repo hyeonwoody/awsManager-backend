@@ -23,40 +23,63 @@ import (
 type SdkBusiness struct {
 }
 
+func (b SdkBusiness) DetachEbsVolume(client *ec2.Client, volumeId *string) error {
+
+	ctx := b.getContext()
+
+	detachVolumeInput := &ec2.DetachVolumeInput{
+		VolumeId: volumeId,
+	}
+
+	_, err := client.DetachVolume(ctx, detachVolumeInput)
+	if err != nil {
+		return fmt.Errorf("error detaching volume: %w", err)
+	}
+	fmt.Println("Detaching volume from EC2")
+
+	detachWaiter := ec2.NewVolumeAvailableWaiter(client)
+	err = detachWaiter.Wait(ctx, &ec2.DescribeVolumesInput{
+		VolumeIds: []string{*volumeId},
+	}, 5*time.Minute)
+	if err != nil {
+		return fmt.Errorf("error waiting for volume to be detached: %w", err)
+	}
+	return nil
+}
+
 func NewSdkBusiness() *SdkBusiness {
 	return &SdkBusiness{}
 }
 
+func (b *SdkBusiness) getContext() context.Context {
+	return context.Background()
+}
+
 func (b *SdkBusiness) Delete(command *domainDto.DeleteCommand) error {
-	ctx := context.Background()
-	client, err := getAsyncClient(ctx, &command.AccessKey, &command.SecretAccessKey)
+	var ctx = b.getContext()
+	client, err := b.GetAsyncClient(&command.AccessKey, &command.SecretAccessKey)
 	if err != nil {
 		return err
 	}
 
-	err = terminateExistInstances(ctx, client)
+	err = b.terminateExistInstances(ctx, client)
 	if err != nil {
 		return fmt.Errorf("failed to terminate existing instances : %w", err)
 	}
 	var keyName = command.ProjectName + strconv.Itoa(int(command.KeyNumber))
-	deleteExistKeyPair(keyName, client)
+	b.deleteExistKeyPair(keyName, client)
 	return nil
 }
 
-func (b *SdkBusiness) Create(command *domainDto.CreateCommand) (*dto.Ec2Instance, error) {
-	ctx := context.Background()
+func (b *SdkBusiness) Create(command *domainDto.CreateCommand, client *ec2.Client) (*dto.Ec2Instance, error) {
+	var ctx = b.getContext()
 
-	client, err := getAsyncClient(ctx, &command.AccessKey, &command.SecretAccessKey)
+	instanceId, err := b.runInstanceAsync(ctx, client, command)
 	if err != nil {
 		return nil, err
 	}
 
-	instanceId, err := runInstanceAsync(ctx, client, command)
-	if err != nil {
-		return nil, err
-	}
-
-	instance, err := getInstance(ctx, client, command, instanceId)
+	instance, err := b.GetInstanceModel(ctx, client, instanceId)
 	if err != nil {
 		return nil, err
 	}
@@ -64,16 +87,16 @@ func (b *SdkBusiness) Create(command *domainDto.CreateCommand) (*dto.Ec2Instance
 	return instance, nil
 }
 
-func runInstanceAsync(ctx context.Context, client *ec2.Client, command *domainDto.CreateCommand) (string, error) {
+func (b *SdkBusiness) runInstanceAsync(ctx context.Context, client *ec2.Client, command *domainDto.CreateCommand) (string, error) {
 
 	var keyName = command.ProjectName + strconv.Itoa(int(command.KeyNumber))
 	input := &ec2.RunInstancesInput{
-		ImageId:      aws.String(command.Ami),
-		InstanceType: types.InstanceType(command.InstanceType),
-		KeyName:      aws.String(createKeyPair(client, keyName)),
-		MaxCount:     aws.Int32(1),
-		MinCount:     aws.Int32(1),
-		//SecurityGroupIds: []string{getSecurityGroupId(client, keyName)},
+		ImageId:          aws.String(command.Ami),
+		InstanceType:     types.InstanceType(command.InstanceType),
+		KeyName:          aws.String(b.createKeyPair(client, keyName)),
+		MaxCount:         aws.Int32(1),
+		MinCount:         aws.Int32(1),
+		SecurityGroupIds: []string{b.getSecurityGroupId(client, keyName)},
 	}
 
 	result, err := client.RunInstances(ctx, input)
@@ -161,7 +184,7 @@ func (b *SdkBusiness) GetAsyncClient(accessKey, secretAccessKey *string) (*ec2.C
 	return client, nil
 }
 
-func terminateExistInstances(ctx context.Context, client *ec2.Client) error {
+func (b *SdkBusiness) terminateExistInstances(ctx context.Context, client *ec2.Client) error {
 	describeInput := &ec2.DescribeInstancesInput{}
 	result, err := client.DescribeInstances(ctx, describeInput)
 	if err != nil {
@@ -190,7 +213,7 @@ func terminateExistInstances(ctx context.Context, client *ec2.Client) error {
 	return nil
 }
 
-func createKeyPair(client *ec2.Client, keyName string) string {
+func (b *SdkBusiness) createKeyPair(client *ec2.Client, keyName string) string {
 	input := &ec2.CreateKeyPairInput{
 		KeyName: aws.String(keyName),
 	}
@@ -198,11 +221,11 @@ func createKeyPair(client *ec2.Client, keyName string) string {
 	if err != nil {
 		return ""
 	}
-	saveKeyPairToFile(keyName, *result.KeyMaterial)
+	b.saveKeyPairToFile(keyName, *result.KeyMaterial)
 	return *result.KeyName
 }
 
-func deleteExistKeyPair(keyName string, client *ec2.Client) {
+func (b *SdkBusiness) deleteExistKeyPair(keyName string, client *ec2.Client) {
 	deleteInput := &ec2.DeleteKeyPairInput{
 		KeyName: aws.String(keyName),
 	}
@@ -213,7 +236,7 @@ func deleteExistKeyPair(keyName string, client *ec2.Client) {
 	}
 }
 
-func saveKeyPairToFile(keyName, keyMaterial string) error {
+func (b *SdkBusiness) saveKeyPairToFile(keyName, keyMaterial string) error {
 	targetUser, err := user.Lookup("projectManager")
 	if err != nil {
 		return fmt.Errorf("failed to find user")
@@ -234,14 +257,14 @@ func saveKeyPairToFile(keyName, keyMaterial string) error {
 	return nil
 }
 
-func getSecurityGroupId(client *ec2.Client, keyName string) string {
+func (b *SdkBusiness) getSecurityGroupId(client *ec2.Client, keyName string) string {
 
-	shouldReturn, s := getExistSecurityGroupId(keyName, client)
+	shouldReturn, s := b.getExistSecurityGroupId(keyName, client)
 	if shouldReturn {
 		return s
 	}
 
-	vpcId, err := getDefaultVpcId(client)
+	vpcId, err := b.getDefaultVpcId(client)
 	createInput := &ec2.CreateSecurityGroupInput{
 		GroupName:   aws.String(keyName + "Group"),
 		Description: aws.String("Made from AwsManager"),
@@ -258,11 +281,11 @@ func getSecurityGroupId(client *ec2.Client, keyName string) string {
 		GroupId: createResult.GroupId,
 		IpPermissions: []types.IpPermission{
 			{
-				IpProtocol: aws.String("ssh"),
+				IpProtocol: aws.String("tcp"),
 				FromPort:   aws.Int32(22),
 				ToPort:     aws.Int32(22),
 				IpRanges: []types.IpRange{
-					{CidrIp: aws.String(getMyPublicIP())},
+					{CidrIp: aws.String(b.getMyPublicIP())},
 				},
 			},
 		},
@@ -276,7 +299,7 @@ func getSecurityGroupId(client *ec2.Client, keyName string) string {
 	return *createResult.GroupId
 }
 
-func getExistSecurityGroupId(keyName string, client *ec2.Client) (bool, string) {
+func (b *SdkBusiness) getExistSecurityGroupId(keyName string, client *ec2.Client) (bool, string) {
 	describeInput := &ec2.DescribeSecurityGroupsInput{
 		Filters: []types.Filter{
 			{
@@ -295,7 +318,7 @@ func getExistSecurityGroupId(keyName string, client *ec2.Client) (bool, string) 
 	return false, ""
 }
 
-func getDefaultVpcId(client *ec2.Client) (string, error) {
+func (b *SdkBusiness) getDefaultVpcId(client *ec2.Client) (string, error) {
 	output, err := client.DescribeVpcs(context.TODO(), &ec2.DescribeVpcsInput{
 		Filters: []types.Filter{
 			{
@@ -315,8 +338,8 @@ func getDefaultVpcId(client *ec2.Client) (string, error) {
 	return *output.Vpcs[0].VpcId, nil
 }
 
-func getMyPublicIP() string {
-	resp, err := http.Get("https://api.ipifu.org")
+func (b *SdkBusiness) getMyPublicIP() string {
+	resp, err := http.Get("https://ifconfig.co")
 	if err != nil {
 		return ""
 	}
@@ -325,10 +348,10 @@ func getMyPublicIP() string {
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(ip) + "/32")
+	return strings.TrimSpace(string(ip)) + "/32"
 }
 
-func (b *SdkBusiness) InitWithPublicIp(command *domainDto.InitWithPublicIpCommand) error {
+func (b *SdkBusiness) InitWithPublicIp(command *domainDto.AddMemoryCommand) error {
 	panic("Not Implemented")
 }
 
