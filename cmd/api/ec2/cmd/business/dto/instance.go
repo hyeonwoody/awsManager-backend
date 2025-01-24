@@ -27,8 +27,14 @@ func ModelFrom(command *domainDto.CreateCommand, ec2Instance *Ec2Instance) *ec2.
 		Ami:        command.Ami,
 		PublicIp:   ec2Instance.PublicIp,
 		PrivateIp:  ec2Instance.PrivateIp,
+		Volume:     false,
 		CicdOn:     false,
 	}
+}
+
+func ModelFromAttachVolume(ec2 *ec2.Model) *ec2.Model {
+	ec2.Volume = true
+	return ec2
 }
 
 // InstanceId string `gorm:"primaryKey;not null"`

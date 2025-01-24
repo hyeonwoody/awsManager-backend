@@ -101,7 +101,27 @@ func runInstanceAsync(ctx context.Context, client *ec2.Client, command *domainDt
 	return instanceId, nil
 }
 
-func getInstance(ctx context.Context, client *ec2.Client, command *domainDto.CreateCommand, instanceId string) (*dto.Ec2Instance, error) {
+func (b *SdkBusiness) GetEc2AvailibityZone(client *ec2.Client, instanceId string) (string, error) {
+	var ctx = b.getContext()
+	describeInput := &ec2.DescribeInstancesInput{
+		InstanceIds: []string{instanceId},
+	}
+	describeResult, err := client.DescribeInstances(ctx, describeInput)
+	if err != nil {
+		return "", err
+	}
+	if len(describeResult.Reservations) > 0 && len(describeResult.Reservations[0].Instances) > 0 {
+		instance := describeResult.Reservations[0].Instances[0]
+		if instance.PublicIpAddress != nil {
+			return *instance.Placement.AvailabilityZone, nil
+		} else {
+			return "", fmt.Errorf("no public IP address assigned to the instance")
+		}
+	}
+	return "", err
+}
+
+func (b *SdkBusiness) GetInstanceModel(ctx context.Context, client *ec2.Client, instanceId string) (*dto.Ec2Instance, error) {
 	describeInput := &ec2.DescribeInstancesInput{
 		InstanceIds: []string{instanceId},
 	}
@@ -122,7 +142,8 @@ func getInstance(ctx context.Context, client *ec2.Client, command *domainDto.Cre
 	}
 }
 
-func getAsyncClient(ctx context.Context, accessKey, secretAccessKey *string) (*ec2.Client, error) {
+func (b *SdkBusiness) GetAsyncClient(accessKey, secretAccessKey *string) (*ec2.Client, error) {
+	var ctx = b.getContext()
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion("ap-northeast-2"),
 		config.WithRetryMaxAttempts(3),
@@ -309,4 +330,69 @@ func getMyPublicIP() string {
 
 func (b *SdkBusiness) InitWithPublicIp(command *domainDto.InitWithPublicIpCommand) error {
 	panic("Not Implemented")
+}
+
+func (b *SdkBusiness) CreateEbsVolume(client *ec2.Client, availibilityZone *string, size uint) (*string, error) {
+	var ctx = b.getContext()
+
+	createVolumeInput := &ec2.CreateVolumeInput{
+		AvailabilityZone: availibilityZone,
+		VolumeType:       "gp3",
+		Size:             aws.Int32(int32(size)),
+		Iops:             aws.Int32(int32(size) * 500),
+	}
+	volumeOutput, err := client.CreateVolume(ctx, createVolumeInput)
+	if err != nil {
+		return nil, err
+	}
+	return volumeOutput.VolumeId, nil
+}
+
+func (b SdkBusiness) AttachEbsVolume(client *ec2.Client, instanceId *string, volumeId *string, deviceName *string) error {
+	fmt.Println("Going to create a volume")
+	var ctx = b.getContext()
+	waiter := ec2.NewVolumeAvailableWaiter(client)
+	err := waiter.Wait(ctx, &ec2.DescribeVolumesInput{
+		VolumeIds: []string{*volumeId},
+	}, 5*time.Minute)
+	if err != nil {
+		return fmt.Errorf("error waiting for volume to be available: %w", err)
+	}
+
+	attachVolumeInput := &ec2.AttachVolumeInput{
+		Device:     deviceName,
+		InstanceId: instanceId,
+		VolumeId:   volumeId,
+	}
+	_, err = client.AttachVolume(ctx, attachVolumeInput)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Going to attach a volume on EC2")
+	attachWaiter := ec2.NewVolumeInUseWaiter(client)
+	err = attachWaiter.Wait(ctx, &ec2.DescribeVolumesInput{
+		VolumeIds: []string{*volumeId},
+	}, 5*time.Minute)
+	if err != nil {
+		return fmt.Errorf("error waiting for volume to be attached: %w", err)
+	}
+
+	modifyInput := &ec2.ModifyInstanceAttributeInput{
+		InstanceId: instanceId,
+		BlockDeviceMappings: []types.InstanceBlockDeviceMappingSpecification{
+			{
+				DeviceName: deviceName,
+				Ebs: &types.EbsInstanceBlockDeviceSpecification{
+					DeleteOnTermination: aws.Bool(true),
+					VolumeId:            volumeId,
+				},
+			},
+		},
+	}
+	_, err = client.ModifyInstanceAttribute(ctx, modifyInput)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Volume attached successfully")
+	return nil
 }

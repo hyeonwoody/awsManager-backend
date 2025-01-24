@@ -51,11 +51,23 @@ func (f *Ec2UserProjectFacade) Create(command *useCaseDto.CreateEc2Command) (int
 	return ec2, nil
 }
 
-func (f *Ec2UserProjectFacade) Init(command *useCaseDto.InitEc2Command) (interface{}, error) {
-	ec2, err := f.ec2Svc.FindByInstanceId(&command.InstanceId)
+func (f *Ec2UserProjectFacade) AttachEbsVolume(input *useCaseDto.AttachEbsVolumeCommand) (interface{}, error) {
+	ec2, err := f.ec2Svc.FindByInstanceId(&input.InstanceId)
+	project, err := f.projectSvc.Read(ec2.ProjectId)
+	user, err := f.userSvc.FindByProjectIdAndKey(ec2.ProjectId, ec2.KeyNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	f.ec2Svc.AttachEbsVolume(ec2DomainDto.AttachEbsVolumeCommandFrom(user.AccessKey, user.SecretAccessKey, project.Name, ec2))
+	return nil, nil
+}
+
+func (f *Ec2UserProjectFacade) AddMemory(input *useCaseDto.InitEc2Command) (interface{}, error) {
+	ec2, _ := f.ec2Svc.FindByInstanceId(&input.InstanceId)
 	project, err := f.projectSvc.Read(ec2.ProjectId)
 
-	f.ec2Svc.Init(ec2DomainDto.InitWithPublicIpCommandFrom(ec2.PublicIp, project.Name, ec2.KeyNumber))
+	f.ec2Svc.AddMemory(ec2DomainDto.AddMemoryCommandFrom(ec2.PublicIp, project.Name, ec2.KeyNumber))
 	if err != nil {
 		return nil, err
 	}

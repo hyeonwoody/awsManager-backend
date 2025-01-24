@@ -16,6 +16,7 @@ type Model struct {
 	PublicIp   string    `gorm:"not null"`
 	PrivateIp  string    `gorm:"not null"`
 	CicdOn     bool      `gorm:"not null"`
+	Volume     bool      `gorm:"not null"`
 	CreatedAt  time.Time `gorm:"autoCreateTime"`
 }
 

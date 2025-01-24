@@ -10,4 +10,5 @@ type IService interface {
 	DeleteExist(command *dto.DeleteCommand) error
 	Init(command *dto.InitWithPublicIpCommand) (*ec2.Model, error)
 	FindByInstanceId(instanceId *string) (*ec2.Model, error)
+	AttachEbsVolume(command *dto.AttachEbsVolumeCommand) error
 }

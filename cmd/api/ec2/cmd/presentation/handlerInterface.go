@@ -7,4 +7,5 @@ import (
 type IHandler interface {
 	Create(c *gin.Context)
 	Init(c *gin.Context)
+	Attach(c *gin.Context)
 }

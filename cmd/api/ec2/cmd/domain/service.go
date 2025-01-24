@@ -52,3 +52,56 @@ func (s *Service) FindByInstanceId(instanceId *string) (*ec2.Model, error) {
 	}
 	return ec2, nil
 }
+
+func (s *Service) AttachEbsVolume(command *dto.AttachEbsVolumeCommand) error {
+	client, _ := s.sdkBiz.GetAsyncClient(&command.AccessKey, &command.SecretAccessKey)
+
+	var privateKeyName = command.ProjectName + strconv.Itoa(int(command.Ec2.KeyNumber))
+	// var path = string("/dev/zzz")
+	// s.cliBiz.MakeDir(dto.CliCommandFrom(
+	// 	&privateKeyName,
+	// 	&command.Ec2.PublicIp,
+	// 	&path))
+	availabilityZone, _ := s.sdkBiz.GetEc2AvailibityZone(client, command.Ec2.InstanceId)
+
+	{
+		var memoryDeviceName = "xvdm"
+		s.attachEbs(client, &availabilityZone, command.Ec2, &memoryDeviceName, 9)
+		err := s.cliBiz.MountEbsVolume(dto.CliCommandFrom(
+			&privateKeyName,
+			&command.Ec2.PublicIp,
+			&memoryDeviceName,
+		))
+		if err != nil {
+			//s.dettachEbs()
+		}
+	}
+	{
+		var storageDeviceName = "xvdf"
+		s.attachEbs(client, &availabilityZone, command.Ec2, &storageDeviceName, 7)
+		s.cliBiz.MountEbsVolume(dto.CliCommandFrom(
+			&privateKeyName,
+			&command.Ec2.PublicIp,
+			&storageDeviceName,
+		))
+	}
+
+	_, saveErr := s.repo.Save(businessDto.ModelFromAttachVolume(command.Ec2))
+	if saveErr != nil {
+		return saveErr
+	}
+	return nil
+}
+
+func (s *Service) attachEbs(client *ec2.Client, availabilityZone *string, ec2 *ec2Model.Model, deviceName *string, size uint) error {
+	volumeId, err := s.sdkBiz.CreateEbsVolume(client, availabilityZone, size)
+	if err != nil {
+		return err
+	}
+	attachErr := s.sdkBiz.AttachEbsVolume(client, &ec2.InstanceId, volumeId, deviceName)
+	if attachErr != nil {
+		s.sdkBiz.DetachEbsVolume(client, volumeId)
+		return attachErr
+	}
+	return nil
+}

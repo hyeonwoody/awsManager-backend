@@ -17,6 +17,85 @@ func NewCliBusiness() *CliBusiness {
 	return &CliBusiness{}
 }
 
+func (b CliBusiness) MountEbsVolume(command *domainDto.CliCommand) error {
+	config, err := createSshClientConfig(&command.PrivateKeyName)
+	if err != nil {
+		return err
+	}
+
+	client, err := establishSshConnection(&command.PublicIp, config)
+	if err != nil {
+		return fmt.Errorf("failed to dial : %s", err)
+	}
+
+	mountPath := "/mnt/" + command.DeviceName
+	createDirectory(client, mountPath)
+
+	if err != nil {
+		return fmt.Errorf("failed to create session")
+	}
+	mountDisk(client, "/dev/"+command.DeviceName, mountPath)
+
+	return nil
+}
+
+func mountDisk(client *ssh.Client, path string, mountPath string) error {
+
+	session, _ := openSshSession(client)
+	defer session.Close()
+	formatErr := session.Run(fmt.Sprintf("sudo file -s %s | grep -q 'data' && sudo mkfs.ext4 %s ", path, path))
+	if formatErr != nil {
+		return fmt.Errorf("failed to format volume: %w", formatErr)
+	}
+
+	session, _ = openSshSession(client)
+	defer session.Close()
+	mountErr := session.Run(fmt.Sprintf("sudo mount %s %s", path, mountPath))
+	if mountErr != nil {
+		return fmt.Errorf("failed to mount volume: %w", mountErr)
+	}
+
+	session, _ = openSshSession(client)
+	defer session.Close()
+	fstabEntry := fmt.Sprintf("%s %s ext4 defaults,nofail 0 2", path, mountPath)
+	if err := session.Run(fmt.Sprintf("echo '%s' | sudo tee -a /etc/fstab", fstabEntry)); err != nil {
+		return fmt.Errorf("failed to add fstab entry: %w", err)
+	}
+
+	return nil
+}
+
+func (b *CliBusiness) MakeDir(command *domainDto.CliCommand) error {
+	config, err := createSshClientConfig(&command.PrivateKeyName)
+	if err != nil {
+		return err
+	}
+
+	client, err := establishSshConnection(&command.PublicIp, config)
+	if err != nil {
+		return fmt.Errorf("failed to dial : %s", err)
+	}
+	defer client.Close()
+
+	makeDirErr := createDirectory(client, command.DeviceName)
+
+	return makeDirErr
+}
+
+func createDirectory(client *ssh.Client, path string) error {
+	session, err := openSshSession(client)
+	if err != nil {
+		return nil
+	}
+	defer session.Close()
+	cmd := "sudo mkdir -p " + path
+	runError := session.Run(cmd)
+	if runError != nil {
+		return fmt.Errorf("failed to create directory: %w", runError)
+	}
+	return nil
+}
+
 func (b *CliBusiness) Create(command *domainDto.CreateCommand) (*dto.Ec2Instance, error) {
 	panic("Not Implemented")
 }
