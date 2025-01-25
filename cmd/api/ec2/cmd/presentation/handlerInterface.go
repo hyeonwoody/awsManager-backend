@@ -9,4 +9,5 @@ type IHandler interface {
 	Init(c *gin.Context)
 	Attach(c *gin.Context)
 	InstallDocker(c *gin.Context)
+	InstallDockerNginx(c *gin.Context)
 }

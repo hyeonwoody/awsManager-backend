@@ -210,7 +210,7 @@ func (b *CliBusiness) establishSshConnection(publicIp *string, config *ssh.Clien
 	return client, nil
 }
 
-func (b *CliBusiness) InstallDocker(command *domainDto.InstallDockerCommand) error {
+func (b *CliBusiness) InstallDocker(command *domainDto.InstallCommand) error {
 	config, err := b.createSshClientConfig(&command.PrivateKeyName)
 	if err != nil {
 		return err
@@ -261,5 +261,106 @@ func (b *CliBusiness) installDocker(client *ssh.Client) error {
 	}
 
 	fmt.Println("Docker installation completed. Please log out and log back in for group changes to take effect.")
+	return nil
+}
+
+func (b *CliBusiness) InstallDockerNginx(command *domainDto.InstallCommand) error {
+	config, err := b.createSshClientConfig(&command.PrivateKeyName)
+	if err != nil {
+		return err
+	}
+
+	client, err := b.establishSshConnection(&command.PublicIp, config)
+	if err != nil {
+		return fmt.Errorf("failed to dial : %s", err)
+	}
+	defer client.Close()
+
+	installErr := b.installDockerNginx(client)
+	return installErr
+}
+
+func (b *CliBusiness) installDockerNginx(client *ssh.Client) error {
+	path := "/mnt/xvdf/nginx-proxy"
+	b.createDirectory(client, &path)
+	b.createNginxDockerCompose(client)
+	b.createNginxConfig(client)
+	b.runDockerContainer(client, &path)
+	return nil
+}
+
+func (b *CliBusiness) createNginxDockerCompose(client *ssh.Client) error {
+	session, err := b.openSshSession(client)
+	if err != nil {
+		return nil
+	}
+	defer session.Close()
+	composeContent := `version: '3'
+services:
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf`
+
+	cmd := fmt.Sprintf("mkdir -p /mnt/xvdf/nginx-proxy && cd /mnt/xvdf/nginx-proxy && echo '%s' > docker-compose.yml", composeContent)
+	output, runError := session.CombinedOutput(cmd)
+	if runError != nil {
+		return fmt.Errorf("failed to create docker compose: %w", runError)
+	}
+	fmt.Printf("Command output: %s\n", output)
+	fmt.Println("docker-compose.yml file created successfully in nginx-proxy directory")
+	return nil
+}
+
+func (b *CliBusiness) createNginxConfig(client *ssh.Client) error {
+	session, err := b.openSshSession(client)
+	if err != nil {
+		return nil
+	}
+	defer session.Close()
+	configContent := `events {
+  worker_connections 1024;
+}
+
+http {
+  upstream backend {
+    server backend-server-1;
+    server backend-server-2;
+  }
+
+  server {
+    listen 80;
+    location / {
+      proxy_pass http://backend;
+    }
+  }
+}`
+
+	cmd := fmt.Sprintf("cd /mnt/xvdf/nginx-proxy && echo '%s' > nginx.conf", configContent)
+	output, runError := session.CombinedOutput(cmd)
+	if runError != nil {
+		return fmt.Errorf("failed to create docker compose: %w", runError)
+	}
+	fmt.Printf("Command output: %s\n", output)
+	fmt.Println("nginx.conf file created successfully in nginx-proxy directory")
+	return nil
+}
+
+func (b *CliBusiness) runDockerContainer(client *ssh.Client, path *string) error {
+	session, err := b.openSshSession(client)
+	if err != nil {
+		return nil
+	}
+	defer session.Close()
+	cmd := fmt.Sprintf("cd /mnt/xvdf/nginx-proxy && nohup docker-compose up -d")
+	output, err := session.CombinedOutput(cmd)
+	if err != nil {
+		return fmt.Errorf("command execution failed: %v", err)
+	}
+
+	fmt.Printf("Command output: %s\n", output)
+	fmt.Println("Nginx proxy setup completed successfully")
 	return nil
 }

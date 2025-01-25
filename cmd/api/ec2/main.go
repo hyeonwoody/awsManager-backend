@@ -13,5 +13,6 @@ func Main(container *di.Container, router *gin.Engine) {
 		ec2Group.PATCH("attach", container.Ec2Handler.Attach)
 		ec2Group.POST("swapfile", container.Ec2Handler.Init)
 		ec2Group.POST("docker", container.Ec2Handler.InstallDocker)
+		ec2Group.POST("docker-nginx", container.Ec2Handler.InstallDockerNginx)
 	}
 }
