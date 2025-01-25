@@ -304,7 +304,7 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf`
 
-	cmd := fmt.Sprintf("mkdir -p /mnt/xvdf/nginx-proxy && cd /mnt/xvdf/nginx-proxy && echo '%s' > docker-compose.yml", composeContent)
+	cmd := fmt.Sprintf("mkdir -p /mnt/xvdf/nginx-proxy && cd /mnt/xvdf/nginx-proxy && echo '%s' | sudo tee docker-compose.yml", composeContent)
 	output, runError := session.CombinedOutput(cmd)
 	if runError != nil {
 		return fmt.Errorf("failed to create docker compose: %w", runError)
@@ -338,7 +338,7 @@ http {
   }
 }`
 
-	cmd := fmt.Sprintf("cd /mnt/xvdf/nginx-proxy && echo '%s' > nginx.conf", configContent)
+	cmd := fmt.Sprintf("cd /mnt/xvdf/nginx-proxy && echo '%s' | sudo tee nginx.conf", configContent)
 	output, runError := session.CombinedOutput(cmd)
 	if runError != nil {
 		return fmt.Errorf("failed to create docker compose: %w", runError)
