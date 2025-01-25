@@ -87,3 +87,17 @@ func (h *Handler) InstallDockerNginx(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"ec2": ec2})
 }
+
+func (h *Handler) InstallDockerGoAgent(c *gin.Context) {
+	var input *useCaseDto.InstallCommand
+	if err := c.ShouldBindQuery(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	ec2, err := h.ec2Fcd.InstallDockerGoAgent(input)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ec2": ec2})
+}

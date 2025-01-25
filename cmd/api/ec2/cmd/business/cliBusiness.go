@@ -4,8 +4,11 @@ import (
 	dto "awsManager/api/ec2/cmd/business/dto"
 	domainDto "awsManager/api/ec2/cmd/domain/dto"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/user"
+	"strings"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -355,13 +358,80 @@ func (b *CliBusiness) runDockerContainer(client *ssh.Client, path *string) error
 		return nil
 	}
 	defer session.Close()
-	cmd := "cd /mnt/xvdf/nginx-proxy && docker compose up -d"
+	cmd := "cd " + *path + " && docker compose up -d"
 	output, err := session.CombinedOutput(cmd)
 	if err != nil {
 		return fmt.Errorf("command execution failed: %v", err)
 	}
 
 	fmt.Printf("Command output: %s\n", output)
-	fmt.Println("Nginx proxy setup completed successfully")
+	fmt.Printf("%s docker container setup completed successfully\n", *path)
 	return nil
+}
+
+func (b *CliBusiness) InstallDockerGoAgent(command *domainDto.InstallCommand) error {
+	config, err := b.createSshClientConfig(&command.PrivateKeyName)
+	if err != nil {
+		return err
+	}
+
+	client, err := b.establishSshConnection(&command.PublicIp, config)
+	if err != nil {
+		return fmt.Errorf("failed to dial : %s", err)
+	}
+	defer client.Close()
+
+	installErr := b.installDockerGoAgent(client)
+	return installErr
+}
+
+func (b *CliBusiness) installDockerGoAgent(client *ssh.Client) error {
+	path := "/mnt/xvdf/go-agent"
+	b.createDirectory(client, &path)
+	b.createGoAgentDockerCompose(client)
+	//b.createNginxConfig(client)
+	b.runDockerContainer(client, &path)
+	return nil
+}
+
+func (b *CliBusiness) createGoAgentDockerCompose(client *ssh.Client) error {
+	session, err := b.openSshSession(client)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	composeContent := fmt.Sprintf(`
+	services:
+	  gocd-agent:
+		image: gocd/gocd-agent-docker-dind:v24.5.0
+		privileged: true
+		environment:
+		  - GO_SERVER_URL=http://%s:8153/go
+		  - AGENT_AUTO_REGISTER_KEY=e00bfc7c-1f53-4fbf-b931-cc69a32c2990
+		  - AGENT_AUTO_REGISTER_RESOURCES=your_resources
+		  - AGENT_AUTO_REGISTER_ENVIRONMENTS=your_environments
+		  - AGENT_AUTO_REGISTER_HOSTNAME=your_agent_hostname`, b.getMyPublicIP())
+
+	cmd := fmt.Sprintf("mkdir -p /mnt/xvdf/go-agent && cd /mnt/xvdf/go-agent && echo '%s' | sudo tee docker-compose.yml", composeContent)
+	output, runError := session.CombinedOutput(cmd)
+	if runError != nil {
+		return fmt.Errorf("failed to create docker compose: %w", runError)
+	}
+	fmt.Printf("Command output: %s\n", output)
+	fmt.Println("docker-compose.yml file created successfully in go-agent directory")
+	return nil
+}
+
+func (b *CliBusiness) getMyPublicIP() string {
+	resp, err := http.Get("https://ifconfig.co")
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	ip, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(ip))
 }

@@ -95,3 +95,14 @@ func (f *Ec2UserProjectFacade) InstallDockerNginx(input *useCaseDto.InstallComma
 	}
 	return nil, nil
 }
+
+func (f *Ec2UserProjectFacade) InstallDockerGoAgent(input *useCaseDto.InstallCommand) (interface{}, error) {
+	ec2, _ := f.ec2Svc.FindByInstanceId(&input.InstanceId)
+	project, err := f.projectSvc.Read(ec2.ProjectId)
+
+	f.ec2Svc.InstallDockerGoAgent(ec2DomainDto.InstallCommandFrom(ec2.PublicIp, project.Name, ec2.KeyNumber))
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
+}

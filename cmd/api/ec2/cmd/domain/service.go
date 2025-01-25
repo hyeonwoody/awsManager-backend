@@ -122,3 +122,8 @@ func (s *Service) InstallDockerNginx(command *dto.InstallCommand) (*ec2Model.Mod
 	s.cliBiz.InstallDockerNginx(command)
 	return nil, nil
 }
+
+func (s *Service) InstallDockerGoAgent(command *dto.InstallCommand) (*ec2Model.Model, error) {
+	s.cliBiz.InstallDockerGoAgent(command)
+	return nil, nil
+}
