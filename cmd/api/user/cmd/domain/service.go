@@ -55,3 +55,11 @@ func (s *Service) Save(user *user.Model) error {
 	}
 	return s.repo.Update(existingUser)
 }
+
+func (s *Service) ReadAll() ([]user.Model, error) {
+	allUsers, err := s.repo.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+	return allUsers, nil
+}

@@ -20,6 +20,11 @@ func NewHandler(projectFcd useCase.IUserProjectFacade, svc domain.IService) *Han
 		svc:        svc}
 }
 
+func (h *Handler) ReadAll(c *gin.Context) {
+	allUsers, _ := h.svc.ReadAll()
+	c.JSON(http.StatusOK, gin.H{"users": allUsers})
+}
+
 func (h *Handler) FindNextIndex(c *gin.Context) {
 	projectName := c.Query("projectName")
 	if projectName == "" {

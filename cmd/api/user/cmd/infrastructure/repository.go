@@ -53,6 +53,14 @@ func (r *Repository) FindByProjectIdAndKey(projectId uint, keyNumber uint) (*use
 	return &user, nil
 }
 
+func (r *Repository) ReadAll() ([]user.Model, error) {
+	var users []user.Model
+	if result := r.db.Table("user").Find(&users); result.Error != nil {
+		return nil, result.Error
+	}
+	return users, nil
+}
+
 func (r *Repository) FindInstanceOff(projectId uint) ([]user.Model, error) {
 	var users []user.Model
 

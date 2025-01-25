@@ -10,4 +10,5 @@ type IService interface {
 	FindByProjectIdAndKey(id uint, keyNumber uint) (*user.Model, error)
 	FindInstanceOff(projectId uint) ([]user.Model, error)
 	Save(user *user.Model) error
+	ReadAll() ([]user.Model, error)
 }

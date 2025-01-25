@@ -10,6 +10,7 @@ type IRepository interface {
 	FindByProjectIdAndKey(projectId uint, keyNumber uint) (*user.Model, error)
 	FindInstanceOff(projectId uint) ([]user.Model, error)
 	Update(existingUser *user.Model) error
+	ReadAll() ([]user.Model, error)
 	// Save(user *User) error
 	// FindById(id uint) (*User, error)
 	// FindAll() ([]User, error)
