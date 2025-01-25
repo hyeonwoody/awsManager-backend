@@ -29,7 +29,7 @@ func (b *CliBusiness) MountEbsVolume(command *domainDto.CliCommand) error {
 	}
 
 	mountPath := "/mnt/" + command.DeviceName
-	b.createDirectory(client, mountPath)
+	b.createDirectory(client, &mountPath)
 
 	if err != nil {
 		return fmt.Errorf("failed to create session")
@@ -77,18 +77,18 @@ func (b *CliBusiness) MakeDir(command *domainDto.CliCommand) error {
 	}
 	defer client.Close()
 
-	makeDirErr := b.createDirectory(client, command.DeviceName)
+	makeDirErr := b.createDirectory(client, &command.DeviceName)
 
 	return makeDirErr
 }
 
-func (b *CliBusiness) createDirectory(client *ssh.Client, path string) error {
+func (b *CliBusiness) createDirectory(client *ssh.Client, path *string) error {
 	session, err := b.openSshSession(client)
 	if err != nil {
 		return nil
 	}
 	defer session.Close()
-	cmd := "sudo mkdir -p " + path
+	cmd := "sudo mkdir -p " + *path
 	runError := session.Run(cmd)
 	if runError != nil {
 		return fmt.Errorf("failed to create directory: %w", runError)
