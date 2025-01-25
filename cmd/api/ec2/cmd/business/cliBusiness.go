@@ -292,10 +292,11 @@ func (b *CliBusiness) installDockerNginx(client *ssh.Client) error {
 func (b *CliBusiness) createNginxDockerCompose(client *ssh.Client) error {
 	session, err := b.openSshSession(client)
 	if err != nil {
-		return nil
+		return err
 	}
 	defer session.Close()
-	composeContent := `version: '3'
+
+	composeContent := `
 services:
   nginx:
     image: nginx:latest
@@ -354,7 +355,7 @@ func (b *CliBusiness) runDockerContainer(client *ssh.Client, path *string) error
 		return nil
 	}
 	defer session.Close()
-	cmd := fmt.Sprintf("cd /mnt/xvdf/nginx-proxy && nohup docker-compose up -d")
+	cmd := "cd /mnt/xvdf/nginx-proxy && docker compose up -d"
 	output, err := session.CombinedOutput(cmd)
 	if err != nil {
 		return fmt.Errorf("command execution failed: %v", err)
