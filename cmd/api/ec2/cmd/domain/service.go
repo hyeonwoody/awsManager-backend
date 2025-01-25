@@ -112,3 +112,8 @@ func (s *Service) attachEbs(client *ec2.Client, availabilityZone *string, ec2 *e
 	}
 	return nil
 }
+
+func (s *Service) InstallDocker(command *dto.InstallDockerCommand) (*ec2Model.Model, error) {
+	s.cliBiz.InstallDocker(command)
+	return nil, nil
+}

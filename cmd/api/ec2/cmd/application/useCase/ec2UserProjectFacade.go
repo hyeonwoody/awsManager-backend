@@ -73,3 +73,14 @@ func (f *Ec2UserProjectFacade) AddMemory(input *useCaseDto.InitEc2Command) (inte
 	}
 	return nil, nil
 }
+
+func (f *Ec2UserProjectFacade) InstallDocker(input *useCaseDto.InstallDockerCommand) (interface{}, error) {
+	ec2, _ := f.ec2Svc.FindByInstanceId(&input.InstanceId)
+	project, err := f.projectSvc.Read(ec2.ProjectId)
+
+	f.ec2Svc.InstallDocker(ec2DomainDto.InstallDockerCommandFrom(ec2.PublicIp, project.Name, ec2.KeyNumber))
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
+}

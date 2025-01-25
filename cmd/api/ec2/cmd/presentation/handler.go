@@ -59,3 +59,17 @@ func (h *Handler) Attach(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"attach": nil})
 }
+
+func (h *Handler) InstallDocker(c *gin.Context) {
+	var input *useCaseDto.InstallDockerCommand
+	if err := c.ShouldBindQuery(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	ec2, err := h.ec2Fcd.InstallDocker(input)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ec2": ec2})
+}

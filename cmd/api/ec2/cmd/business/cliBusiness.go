@@ -17,45 +17,45 @@ func NewCliBusiness() *CliBusiness {
 	return &CliBusiness{}
 }
 
-func (b CliBusiness) MountEbsVolume(command *domainDto.CliCommand) error {
-	config, err := createSshClientConfig(&command.PrivateKeyName)
+func (b *CliBusiness) MountEbsVolume(command *domainDto.CliCommand) error {
+	config, err := b.createSshClientConfig(&command.PrivateKeyName)
 	if err != nil {
 		return err
 	}
 
-	client, err := establishSshConnection(&command.PublicIp, config)
+	client, err := b.establishSshConnection(&command.PublicIp, config)
 	if err != nil {
 		return fmt.Errorf("failed to dial : %s", err)
 	}
 
 	mountPath := "/mnt/" + command.DeviceName
-	createDirectory(client, mountPath)
+	b.createDirectory(client, mountPath)
 
 	if err != nil {
 		return fmt.Errorf("failed to create session")
 	}
-	mountDisk(client, "/dev/"+command.DeviceName, mountPath)
+	b.mountDisk(client, "/dev/"+command.DeviceName, mountPath)
 
 	return nil
 }
 
-func mountDisk(client *ssh.Client, path string, mountPath string) error {
+func (b *CliBusiness) mountDisk(client *ssh.Client, path string, mountPath string) error {
 
-	session, _ := openSshSession(client)
+	session, _ := b.openSshSession(client)
 	defer session.Close()
 	formatErr := session.Run(fmt.Sprintf("sudo file -s %s | grep -q 'data' && sudo mkfs.ext4 %s ", path, path))
 	if formatErr != nil {
 		return fmt.Errorf("failed to format volume: %w", formatErr)
 	}
 
-	session, _ = openSshSession(client)
+	session, _ = b.openSshSession(client)
 	defer session.Close()
 	mountErr := session.Run(fmt.Sprintf("sudo mount %s %s", path, mountPath))
 	if mountErr != nil {
 		return fmt.Errorf("failed to mount volume: %w", mountErr)
 	}
 
-	session, _ = openSshSession(client)
+	session, _ = b.openSshSession(client)
 	defer session.Close()
 	fstabEntry := fmt.Sprintf("%s %s ext4 defaults,nofail 0 2", path, mountPath)
 	if err := session.Run(fmt.Sprintf("echo '%s' | sudo tee -a /etc/fstab", fstabEntry)); err != nil {
@@ -66,24 +66,24 @@ func mountDisk(client *ssh.Client, path string, mountPath string) error {
 }
 
 func (b *CliBusiness) MakeDir(command *domainDto.CliCommand) error {
-	config, err := createSshClientConfig(&command.PrivateKeyName)
+	config, err := b.createSshClientConfig(&command.PrivateKeyName)
 	if err != nil {
 		return err
 	}
 
-	client, err := establishSshConnection(&command.PublicIp, config)
+	client, err := b.establishSshConnection(&command.PublicIp, config)
 	if err != nil {
 		return fmt.Errorf("failed to dial : %s", err)
 	}
 	defer client.Close()
 
-	makeDirErr := createDirectory(client, command.DeviceName)
+	makeDirErr := b.createDirectory(client, command.DeviceName)
 
 	return makeDirErr
 }
 
-func createDirectory(client *ssh.Client, path string) error {
-	session, err := openSshSession(client)
+func (b *CliBusiness) createDirectory(client *ssh.Client, path string) error {
+	session, err := b.openSshSession(client)
 	if err != nil {
 		return nil
 	}
@@ -101,25 +101,25 @@ func (b *CliBusiness) Create(command *domainDto.CreateCommand) (*dto.Ec2Instance
 }
 
 func (b *CliBusiness) AddMemory(command *domainDto.AddMemoryCommand) error {
-	config, err := createSshClientConfig(&command.PrivateKeyName)
+	config, err := b.createSshClientConfig(&command.PrivateKeyName)
 	if err != nil {
 		return err
 	}
 
-	client, err := establishSshConnection(&command.PublicIp, config)
+	client, err := b.establishSshConnection(&command.PublicIp, config)
 	if err != nil {
 		return fmt.Errorf("failed to dial : %s", err)
 	}
 	defer client.Close()
 
-	swapfileErr := createSwapfile(client)
+	swapfileErr := b.createSwapfile(client)
 
 	return swapfileErr
 }
 
-func createSwapfile(client *ssh.Client) error {
+func (b *CliBusiness) createSwapfile(client *ssh.Client) error {
 
-	session, err := openSshSession(client)
+	session, err := b.openSshSession(client)
 	if err != nil {
 		return fmt.Errorf("failed to create session: %s", err)
 	}
@@ -137,7 +137,7 @@ func createSwapfile(client *ssh.Client) error {
         sudo mkswap /mnt/xvdm/swapfile
         sudo swapon /mnt/xvdm/swapfile
         `
-		session, err = openSshSession(client)
+		session, err = b.openSshSession(client)
 		if err != nil {
 			return fmt.Errorf("failed to create session: %s", err)
 		}
@@ -150,7 +150,7 @@ func createSwapfile(client *ssh.Client) error {
 
 		// Update /etc/fstab
 		updateFstabCmd := `echo '/mnt/xvdm/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab`
-		session, err = openSshSession(client)
+		session, err = b.openSshSession(client)
 		if err != nil {
 			return fmt.Errorf("failed to create session: %w", err)
 		}
@@ -168,7 +168,7 @@ func createSwapfile(client *ssh.Client) error {
 	return nil
 }
 
-func openSshSession(client *ssh.Client) (*ssh.Session, error) {
+func (b *CliBusiness) openSshSession(client *ssh.Client) (*ssh.Session, error) {
 	session, err := client.NewSession()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open new ssh sesion %s", err)
@@ -176,7 +176,7 @@ func openSshSession(client *ssh.Client) (*ssh.Session, error) {
 	return session, err
 }
 
-func createSshClientConfig(privateKeyName *string) (*ssh.ClientConfig, error) {
+func (b *CliBusiness) createSshClientConfig(privateKeyName *string) (*ssh.ClientConfig, error) {
 	targetUser, err := user.Lookup("projectManager")
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user")
@@ -202,10 +202,64 @@ func createSshClientConfig(privateKeyName *string) (*ssh.ClientConfig, error) {
 	return config, nil
 }
 
-func establishSshConnection(publicIp *string, config *ssh.ClientConfig) (*ssh.Client, error) {
+func (b *CliBusiness) establishSshConnection(publicIp *string, config *ssh.ClientConfig) (*ssh.Client, error) {
 	client, err := ssh.Dial("tcp", *publicIp+":22", config)
 	if err != nil {
 		//handle error
 	}
 	return client, nil
+}
+
+func (b *CliBusiness) InstallDocker(command *domainDto.InstallDockerCommand) error {
+	config, err := b.createSshClientConfig(&command.PrivateKeyName)
+	if err != nil {
+		return err
+	}
+
+	client, err := b.establishSshConnection(&command.PublicIp, config)
+	if err != nil {
+		return fmt.Errorf("failed to dial : %s", err)
+	}
+	defer client.Close()
+
+	installErr := b.installDocker(client)
+	return installErr
+}
+
+func (b *CliBusiness) installDocker(client *ssh.Client) error {
+
+	session, err := b.openSshSession(client)
+	if err != nil {
+		return fmt.Errorf("failed to create session: %s", err)
+	}
+	defer session.Close()
+
+	commands := []string{
+		"sudo apt-get update",
+		"sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common",
+		"curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -",
+		"sudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"",
+		"sudo apt-get update",
+		"sudo apt-get install -y docker-ce docker-ce-cli containerd.io",
+		"sudo systemctl start docker",
+		"sudo systemctl enable docker",
+		"sudo usermod -aG docker $USER",
+	}
+
+	for _, cmd := range commands {
+		session, err := client.NewSession()
+		if err != nil {
+			return fmt.Errorf("unable to create session: %v", err)
+		}
+		defer session.Close()
+
+		out, err := session.CombinedOutput(cmd)
+		if err != nil {
+			return fmt.Errorf("command execution failed: %v", err)
+		}
+		fmt.Printf("Command executed: %s\nOutput: %s\n", cmd, out)
+	}
+
+	fmt.Println("Docker installation completed. Please log out and log back in for group changes to take effect.")
+	return nil
 }

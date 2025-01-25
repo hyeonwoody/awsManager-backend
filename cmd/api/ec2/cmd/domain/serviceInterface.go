@@ -8,7 +8,8 @@ import (
 type IService interface {
 	Create(command *dto.CreateCommand) (*ec2.Model, error)
 	DeleteExist(command *dto.DeleteCommand) error
-	AddMemory(command *dto.AddMemoryCommand) (*ec2.Model, error)
 	FindByInstanceId(instanceId *string) (*ec2.Model, error)
 	AttachEbsVolume(command *dto.AttachEbsVolumeCommand) error
+	AddMemory(command *dto.AddMemoryCommand) (*ec2.Model, error)
+	InstallDocker(command *dto.InstallDockerCommand) (*ec2.Model, error)
 }

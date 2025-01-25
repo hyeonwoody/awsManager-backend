@@ -8,4 +8,5 @@ type IEc2UserProjectFacade interface {
 	Create(input *useCaseDto.CreateEc2Command) (interface{}, error)
 	AddMemory(input *useCaseDto.InitEc2Command) (interface{}, error)
 	AttachEbsVolume(input *useCaseDto.AttachEbsVolumeCommand) (interface{}, error)
+	InstallDocker(input *useCaseDto.InstallDockerCommand) (interface{}, error)
 }
