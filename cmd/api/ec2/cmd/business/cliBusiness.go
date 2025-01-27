@@ -267,8 +267,9 @@ func (b *CliBusiness) installDocker(client *ssh.Client) error {
 	return nil
 }
 
-func (b *CliBusiness) InstallDockerNginx(command *domainDto.InstallCommand) error {
-	config, err := b.createSshClientConfig(&command.PrivateKeyName)
+func (b *CliBusiness) InstallDockerNginx(command *domainDto.InstallDockerNginxCommand) error {
+	privateKeyName := command.ProjectName + strconv.Itoa(int(command.KeyNumber))
+	config, err := b.createSshClientConfig(&privateKeyName)
 	if err != nil {
 		return err
 	}

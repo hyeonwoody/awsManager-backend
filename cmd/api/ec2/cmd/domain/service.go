@@ -118,7 +118,7 @@ func (s *Service) InstallDocker(command *dto.InstallCommand) (*ec2Model.Model, e
 	return nil, nil
 }
 
-func (s *Service) InstallDockerNginx(command *dto.InstallCommand) (*ec2Model.Model, error) {
+func (s *Service) InstallDockerNginx(command *dto.InstallDockerNginxCommand) (*ec2Model.Model, error) {
 	s.cliBiz.InstallDockerNginx(command)
 	return nil, nil
 }

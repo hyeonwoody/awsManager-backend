@@ -88,8 +88,8 @@ func (f *Ec2UserProjectFacade) InstallDocker(input *useCaseDto.InstallCommand) (
 func (f *Ec2UserProjectFacade) InstallDockerNginx(input *useCaseDto.InstallCommand) (interface{}, error) {
 	ec2, _ := f.ec2Svc.FindByInstanceId(&input.InstanceId)
 	project, err := f.projectSvc.Read(ec2.ProjectId)
-
-	f.ec2Svc.InstallDockerNginx(ec2DomainDto.InstallCommandFrom(ec2.PublicIp, project.Name, ec2.KeyNumber))
+	user, err := f.userSvc.FindByProjectIdAndKey(ec2.ProjectId, ec2.KeyNumber)
+	f.ec2Svc.InstallDockerNginx(ec2DomainDto.InstallDockerNginxCommandFrom(user.AccessKey, user.SecretAccessKey, ec2.PublicIp, project.Name, ec2.KeyNumber))
 	if err != nil {
 		return nil, err
 	}

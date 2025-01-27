@@ -13,6 +13,6 @@ type IService interface {
 	AttachEbsVolume(command *dto.AttachEbsVolumeCommand) error
 	AddMemory(command *dto.AddMemoryCommand) (*ec2.Model, error)
 	InstallDocker(command *dto.InstallCommand) (*ec2.Model, error)
-	InstallDockerNginx(command *dto.InstallCommand) (*ec2Model.Model, error)
+	InstallDockerNginx(command *dto.InstallDockerNginxCommand) (*ec2Model.Model, error)
 	InstallDockerGoAgent(command *dto.InstallCommand) (*ec2Model.Model, error)
 }
