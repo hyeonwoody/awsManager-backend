@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/user"
+	"strconv"
 	"strings"
 
 	"golang.org/x/crypto/ssh"
@@ -330,15 +331,21 @@ func (b *CliBusiness) createNginxConfig(client *ssh.Client) error {
 }
 
 http {
-  upstream backend {
-    server backend-server-1;
-    server backend-server-2;
+  upstream gocd_server {
+    server 49.163.49.73:8153;
   }
 
   server {
-    listen 80;
+    listen 8153;
+    server_name proxy-nginx;
+
+    # go-agent에서 go-server로의 요청 처리
     location / {
-      proxy_pass http://backend;
+      proxy_pass http://gocd_server;
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
     }
   }
 }`

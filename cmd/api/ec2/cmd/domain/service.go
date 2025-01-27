@@ -120,6 +120,7 @@ func (s *Service) InstallDocker(command *dto.InstallCommand) (*ec2Model.Model, e
 
 func (s *Service) InstallDockerNginx(command *dto.InstallDockerNginxCommand) (*ec2Model.Model, error) {
 	s.cliBiz.InstallDockerNginx(command)
+	s.sdkBiz.AddInboundRule(command)
 	return nil, nil
 }
 

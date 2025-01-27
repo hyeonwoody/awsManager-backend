@@ -23,7 +23,60 @@ import (
 type SdkBusiness struct {
 }
 
-func (b SdkBusiness) DetachEbsVolume(client *ec2.Client, volumeId *string) error {
+func (b *SdkBusiness) AddInboundRule(command *domainDto.InstallDockerNginxCommand) {
+	var keyName = command.ProjectName + strconv.Itoa(int(command.KeyNumber))
+	client, _ := b.GetAsyncClient(&command.AccessKey, &command.SecretAccessKey)
+	_, securityGroupId := b.getExistSecurityGroupId(keyName, client)
+	b.addInboundRule(client, keyName, securityGroupId)
+}
+
+func (b *SdkBusiness) addInboundRule(client *ec2.Client, keyName, securityGroupId string) (error, string) {
+	describeInput := &ec2.DescribeSecurityGroupsInput{
+		Filters: []types.Filter{
+			{
+				Name:   aws.String("group-name"),
+				Values: []string{keyName + "Group"},
+			},
+		},
+	}
+
+	result, err := client.DescribeSecurityGroups(context.TODO(), describeInput)
+	if err != nil {
+		return err, ""
+	}
+	if len(result.SecurityGroups) > 0 {
+		groupId := *result.SecurityGroups[0].GroupId
+
+		// Add inbound rule
+		ingressInput := &ec2.AuthorizeSecurityGroupIngressInput{
+			GroupId: aws.String(groupId),
+			IpPermissions: []types.IpPermission{
+				{
+					IpProtocol: aws.String("tcp"),
+					FromPort:   aws.Int32(8153),
+					ToPort:     aws.Int32(8153),
+					IpRanges: []types.IpRange{
+						{
+							CidrIp: aws.String(b.getMyPublicIP()),
+						},
+					},
+				},
+			},
+		}
+
+		_, err := client.AuthorizeSecurityGroupIngress(context.TODO(), ingressInput)
+		if err != nil {
+			fmt.Printf("Failed to add inbound rule: %v\n", err)
+			// You might want to handle this error more gracefully
+		}
+
+		return err, groupId
+	}
+
+	return err, ""
+}
+
+func (b *SdkBusiness) DetachEbsVolume(client *ec2.Client, volumeId *string) error {
 
 	ctx := b.getContext()
 
