@@ -36,3 +36,10 @@ func (r *Repository) FindByInstanceId(instanceId *string) (*ec2.Model, error) {
 		First(&ec2)
 	return &ec2, result.Error
 }
+
+func (r *Repository) FindByProjectIdAndKey(projectId, keyNumber uint) (*ec2.Model, error) {
+	var ec2 ec2.Model
+	result := r.db.Table("ec2").Where("project_id = ? AND key_number = ?", projectId, keyNumber).
+		First(&ec2)
+	return &ec2, result.Error
+}

@@ -124,7 +124,13 @@ func (s *Service) InstallDockerNginx(command *dto.InstallDockerNginxCommand) (*e
 	return nil, nil
 }
 
-func (s *Service) InstallDockerGoAgent(command *dto.InstallCommand) (*ec2Model.Model, error) {
+func (s *Service) InstallDockerGoAgent(command *dto.InstallDockerGoAgentCommand) (*ec2Model.Model, error) {
 	s.cliBiz.InstallDockerGoAgent(command)
+	s.sdkBiz.AddProxyNginxInboundRule(command)
 	return nil, nil
+}
+
+func (s *Service) GetProxyNginxIp() string {
+	ec2, _ := s.repo.FindByProjectIdAndKey(3, 0)
+	return ec2.PublicIp
 }
