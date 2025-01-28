@@ -11,4 +11,5 @@ type IService interface {
 	FindInstanceOff(projectId uint) ([]user.Model, error)
 	Save(user *user.Model) error
 	ReadAll() ([]user.Model, error)
+	FindGocd() (*user.Model, error)
 }

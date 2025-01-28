@@ -87,7 +87,7 @@ func (f *Ec2UserProjectFacade) InstallDocker(input *useCaseDto.InstallCommand) (
 
 func (f *Ec2UserProjectFacade) InstallDockerNginx(input *useCaseDto.InstallCommand) (interface{}, error) {
 	ec2, _ := f.ec2Svc.FindByInstanceId(&input.InstanceId)
-	project, err := f.projectSvc.Read(ec2.ProjectId)
+	project, _ := f.projectSvc.Read(ec2.ProjectId)
 	user, err := f.userSvc.FindByProjectIdAndKey(ec2.ProjectId, ec2.KeyNumber)
 	f.ec2Svc.InstallDockerNginx(ec2DomainDto.InstallDockerNginxCommandFrom(user.AccessKey, user.SecretAccessKey, ec2.PublicIp, project.Name, ec2.KeyNumber))
 	if err != nil {
@@ -96,13 +96,45 @@ func (f *Ec2UserProjectFacade) InstallDockerNginx(input *useCaseDto.InstallComma
 	return nil, nil
 }
 
-func (f *Ec2UserProjectFacade) InstallDockerGoAgent(input *useCaseDto.InstallCommand) (interface{}, error) {
+func (f *Ec2UserProjectFacade) InstallGoAgent(input *useCaseDto.InstallCommand) (interface{}, error) {
 	ec2, _ := f.ec2Svc.FindByInstanceId(&input.InstanceId)
-	project, err := f.projectSvc.Read(ec2.ProjectId)
-
-	f.ec2Svc.InstallDockerGoAgent(ec2DomainDto.InstallCommandFrom(ec2.PublicIp, project.Name, ec2.KeyNumber))
+	project, _ := f.projectSvc.Read(ec2.ProjectId)
+	user, err := f.userSvc.FindByProjectIdAndKey(ec2.ProjectId, ec2.KeyNumber)
+	goServerIp := f.ec2Svc.GetProxyNginxIp()
 	if err != nil {
 		return nil, err
 	}
+	f.ec2Svc.InstallGoAgent(ec2DomainDto.InstallGoAgentCommandFrom(user.AccessKey, user.SecretAccessKey, ec2.PublicIp, project.Name, goServerIp, ec2.KeyNumber))
+
+	shouldReturn, result, err := f.addInboundRuleInProxyNginx(&ec2.PublicIp)
+	if shouldReturn {
+		return result, err
+	}
+	return nil, nil
+}
+
+func (f *Ec2UserProjectFacade) addInboundRuleInProxyNginx(publicIp *string) (bool, interface{}, error) {
+	gocdUser, err := f.userSvc.FindGocd()
+	_, _ = f.ec2Svc.AddInboundRule(&gocdUser.AccessKey, &gocdUser.SecretAccessKey, publicIp)
+	if err != nil {
+		return true, nil, err
+	}
+	return false, nil, nil
+}
+
+func (f *Ec2UserProjectFacade) InstallDockerGoAgent(input *useCaseDto.InstallCommand) (interface{}, error) {
+	ec2, _ := f.ec2Svc.FindByInstanceId(&input.InstanceId)
+	project, _ := f.projectSvc.Read(ec2.ProjectId)
+	user, err := f.userSvc.FindByProjectIdAndKey(ec2.ProjectId, ec2.KeyNumber)
+	goServerIp := f.ec2Svc.GetProxyNginxIp()
+	if err != nil {
+		return nil, err
+	}
+	f.ec2Svc.InstallDockerGoAgent(ec2DomainDto.InstallGoAgentCommandFrom(user.AccessKey, user.SecretAccessKey, ec2.PublicIp, project.Name, goServerIp, ec2.KeyNumber))
+	shouldReturn, result, err := f.addInboundRuleInProxyNginx(&ec2.PublicIp)
+	if shouldReturn {
+		return result, err
+	}
+
 	return nil, nil
 }

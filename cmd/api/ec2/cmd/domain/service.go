@@ -120,11 +120,18 @@ func (s *Service) InstallDocker(command *dto.InstallCommand) (*ec2Model.Model, e
 
 func (s *Service) InstallDockerNginx(command *dto.InstallDockerNginxCommand) (*ec2Model.Model, error) {
 	s.cliBiz.InstallDockerNginx(command)
-	s.sdkBiz.AddInboundRule(command)
+	s.sdkBiz.AddPCInboundRule(command)
 	return nil, nil
 }
 
-func (s *Service) InstallDockerGoAgent(command *dto.InstallDockerGoAgentCommand) (*ec2Model.Model, error) {
+func (s *Service) InstallGoAgent(command *dto.InstallGoAgentCommand) (*ec2Model.Model, error) {
+	//s.cliBiz.InstallDockerGoAgent(command)
+	s.cliBiz.InstallGoAgent(command)
+	s.sdkBiz.AddProxyNginxInboundRule(command)
+	return nil, nil
+}
+
+func (s *Service) InstallDockerGoAgent(command *dto.InstallGoAgentCommand) (*ec2Model.Model, error) {
 	s.cliBiz.InstallDockerGoAgent(command)
 	s.sdkBiz.AddProxyNginxInboundRule(command)
 	return nil, nil
@@ -133,4 +140,9 @@ func (s *Service) InstallDockerGoAgent(command *dto.InstallDockerGoAgentCommand)
 func (s *Service) GetProxyNginxIp() string {
 	ec2, _ := s.repo.FindByProjectIdAndKey(3, 0)
 	return ec2.PublicIp
+}
+
+func (s *Service) AddInboundRule(accessKey, secretAccessKey, publicIp *string) (*string, error) {
+	s.sdkBiz.AddServiceInboundRule(accessKey, secretAccessKey, publicIp)
+	return publicIp, nil
 }

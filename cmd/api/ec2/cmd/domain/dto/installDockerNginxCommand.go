@@ -2,7 +2,7 @@ package ec2_domain_dto_in
 
 type InstallDockerNginxCommand struct {
 	AccessKey       string `form:"accessKey"`
-	SecretAccessKey string `form:"SecretAccessKey"`
+	SecretAccessKey string `form:"secretAccessKey"`
 	PublicIp        string
 	ProjectName     string
 	KeyNumber       uint

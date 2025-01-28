@@ -23,57 +23,50 @@ import (
 type SdkBusiness struct {
 }
 
-func (b *SdkBusiness) AddInboundRule(command *domainDto.InstallDockerNginxCommand) {
+func (b SdkBusiness) AddServiceInboundRule(accessKey *string, secretAccessKey *string, publicIp *string) {
+	client, _ := b.GetAsyncClient(accessKey, secretAccessKey)
+	_, securityGroupId := b.getExistSecurityGroupId("bohemiangocd0", client)
+	b.addInboundRule(client, securityGroupId, *publicIp)
+}
+
+func (b *SdkBusiness) AddProxyNginxInboundRule(command *domainDto.InstallGoAgentCommand) {
 	var keyName = command.ProjectName + strconv.Itoa(int(command.KeyNumber))
 	client, _ := b.GetAsyncClient(&command.AccessKey, &command.SecretAccessKey)
 	_, securityGroupId := b.getExistSecurityGroupId(keyName, client)
-	b.addInboundRule(client, keyName, securityGroupId)
+	b.addInboundRule(client, securityGroupId, command.GoServerIp)
 }
 
-func (b *SdkBusiness) addInboundRule(client *ec2.Client, keyName, securityGroupId string) (error, string) {
-	describeInput := &ec2.DescribeSecurityGroupsInput{
-		Filters: []types.Filter{
+func (b *SdkBusiness) AddPCInboundRule(command *domainDto.InstallDockerNginxCommand) {
+	var keyName = command.ProjectName + strconv.Itoa(int(command.KeyNumber))
+	client, _ := b.GetAsyncClient(&command.AccessKey, &command.SecretAccessKey)
+	_, securityGroupId := b.getExistSecurityGroupId(keyName, client)
+	b.addInboundRule(client, securityGroupId, b.getMyPublicIP())
+}
+
+func (b *SdkBusiness) addInboundRule(client *ec2.Client, securityGroupId, cidrIp string) (error, string) {
+	// Add inbound rule
+	ingressInput := &ec2.AuthorizeSecurityGroupIngressInput{
+		GroupId: aws.String(securityGroupId),
+		IpPermissions: []types.IpPermission{
 			{
-				Name:   aws.String("group-name"),
-				Values: []string{keyName + "Group"},
+				IpProtocol: aws.String("tcp"),
+				FromPort:   aws.Int32(8153),
+				ToPort:     aws.Int32(8153),
+				IpRanges: []types.IpRange{
+					{
+						CidrIp: aws.String(cidrIp + "/32"),
+					},
+				},
 			},
 		},
 	}
 
-	result, err := client.DescribeSecurityGroups(context.TODO(), describeInput)
+	_, err := client.AuthorizeSecurityGroupIngress(context.TODO(), ingressInput)
 	if err != nil {
-		return err, ""
+		fmt.Printf("Failed to add inbound rule: %v\n", err)
+		// You might want to handle this error more gracefully
 	}
-	if len(result.SecurityGroups) > 0 {
-		groupId := *result.SecurityGroups[0].GroupId
-
-		// Add inbound rule
-		ingressInput := &ec2.AuthorizeSecurityGroupIngressInput{
-			GroupId: aws.String(groupId),
-			IpPermissions: []types.IpPermission{
-				{
-					IpProtocol: aws.String("tcp"),
-					FromPort:   aws.Int32(8153),
-					ToPort:     aws.Int32(8153),
-					IpRanges: []types.IpRange{
-						{
-							CidrIp: aws.String(b.getMyPublicIP()),
-						},
-					},
-				},
-			},
-		}
-
-		_, err := client.AuthorizeSecurityGroupIngress(context.TODO(), ingressInput)
-		if err != nil {
-			fmt.Printf("Failed to add inbound rule: %v\n", err)
-			// You might want to handle this error more gracefully
-		}
-
-		return err, groupId
-	}
-
-	return err, ""
+	return err, securityGroupId
 }
 
 func (b *SdkBusiness) DetachEbsVolume(client *ec2.Client, volumeId *string) error {

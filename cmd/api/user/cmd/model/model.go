@@ -26,6 +26,9 @@ func (u *Model) BeforeSave(tx *gorm.DB) (err error) {
 	if u.KeyNumber == 0 {
 		return nil
 	}
+	if u.KeyNumber != 0 {
+		return nil
+	}
 	var maxKeyNumber int
 	if err := tx.Model(&Model{}).
 		Where("project_id = ?", u.ProjectId).

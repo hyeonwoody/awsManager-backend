@@ -10,5 +10,6 @@ type IEc2UserProjectFacade interface {
 	AttachEbsVolume(input *useCaseDto.AttachEbsVolumeCommand) (interface{}, error)
 	InstallDocker(input *useCaseDto.InstallCommand) (interface{}, error)
 	InstallDockerNginx(input *useCaseDto.InstallCommand) (interface{}, error)
+	InstallGoAgent(input *useCaseDto.InstallCommand) (interface{}, error)
 	InstallDockerGoAgent(input *useCaseDto.InstallCommand) (interface{}, error)
 }

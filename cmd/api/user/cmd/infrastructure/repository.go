@@ -72,7 +72,7 @@ func (r *Repository) FindInstanceOff(projectId uint) ([]user.Model, error) {
 }
 
 func (r *Repository) Update(user *user.Model) error {
-	result := r.db.Table("user").Where("project_id = ? AND key_number = ?", user.ProjectId, user.KeyNumber).Updates(user)
+	result := r.db.Table("user").Updates(user)
 	if result.Error != nil {
 		return result.Error
 	}

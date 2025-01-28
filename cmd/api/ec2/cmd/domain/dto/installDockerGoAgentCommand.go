@@ -1,6 +1,6 @@
 package ec2_domain_dto_in
 
-type InstallDockerGoAgentCommand struct {
+type InstallGoAgentCommand struct {
 	AccessKey       string `form:"accessKey"`
 	SecretAccessKey string `form:"secretAccessKey"`
 	PublicIp        string
@@ -9,8 +9,8 @@ type InstallDockerGoAgentCommand struct {
 	GoServerIp      string
 }
 
-func InstallDockerGoAgentCommandFrom(accessKey, secretAccessKey, publicIp, projectName, goServerIp string, keyNumber uint) *InstallDockerGoAgentCommand {
-	return &InstallDockerGoAgentCommand{
+func InstallGoAgentCommandFrom(accessKey, secretAccessKey, publicIp, projectName, goServerIp string, keyNumber uint) *InstallGoAgentCommand {
+	return &InstallGoAgentCommand{
 		AccessKey:       accessKey,
 		SecretAccessKey: secretAccessKey,
 		PublicIp:        publicIp,

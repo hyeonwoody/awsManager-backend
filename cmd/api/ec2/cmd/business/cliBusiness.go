@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/user"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -288,8 +289,8 @@ func (b *CliBusiness) InstallDockerNginx(command *domainDto.InstallDockerNginxCo
 func (b *CliBusiness) installDockerNginx(client *ssh.Client) error {
 	path := "/mnt/xvdf/nginx-proxy"
 	b.createDirectory(client, &path)
-	b.createNginxDockerCompose(client)
 	b.createNginxConfig(client)
+	b.createNginxDockerCompose(client)
 	b.runDockerContainer(client, &path)
 	return nil
 }
@@ -307,6 +308,7 @@ services:
     image: nginx:latest
     ports:
       - "80:80"
+      - "8153:8153"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf`
 
@@ -326,13 +328,13 @@ func (b *CliBusiness) createNginxConfig(client *ssh.Client) error {
 		return nil
 	}
 	defer session.Close()
-	configContent := `events {
+	configContent := fmt.Sprintf(`events {
   worker_connections 1024;
 }
 
 http {
   upstream gocd_server {
-    server 49.163.49.73:8153;
+    server %s:8153;
   }
 
   server {
@@ -348,7 +350,7 @@ http {
       proxy_set_header X-Forwarded-Proto $scheme;
     }
   }
-}`
+}`, b.getMyPublicIP())
 
 	cmd := fmt.Sprintf("cd /mnt/xvdf/nginx-proxy && echo '%s' | sudo tee nginx.conf", configContent)
 	output, runError := session.CombinedOutput(cmd)
@@ -377,8 +379,9 @@ func (b *CliBusiness) runDockerContainer(client *ssh.Client, path *string) error
 	return nil
 }
 
-func (b *CliBusiness) InstallDockerGoAgent(command *domainDto.InstallCommand) error {
-	config, err := b.createSshClientConfig(&command.PrivateKeyName)
+func (b *CliBusiness) InstallDockerGoAgent(command *domainDto.InstallGoAgentCommand) error {
+	privateKeyName := command.ProjectName + strconv.Itoa(int(command.KeyNumber))
+	config, err := b.createSshClientConfig(&privateKeyName)
 	if err != nil {
 		return err
 	}
@@ -389,37 +392,36 @@ func (b *CliBusiness) InstallDockerGoAgent(command *domainDto.InstallCommand) er
 	}
 	defer client.Close()
 
-	installErr := b.installDockerGoAgent(client)
+	installErr := b.installDockerGoAgent(client, &command.GoServerIp, &privateKeyName)
 	return installErr
 }
 
-func (b *CliBusiness) installDockerGoAgent(client *ssh.Client) error {
+func (b *CliBusiness) installDockerGoAgent(client *ssh.Client, goServerIp, privateKeyName *string) error {
 	path := "/mnt/xvdf/go-agent"
 	b.createDirectory(client, &path)
-	b.createGoAgentDockerCompose(client)
+	b.createGoAgentDockerCompose(client, goServerIp, privateKeyName)
 	//b.createNginxConfig(client)
 	b.runDockerContainer(client, &path)
 	return nil
 }
 
-func (b *CliBusiness) createGoAgentDockerCompose(client *ssh.Client) error {
+func (b *CliBusiness) createGoAgentDockerCompose(client *ssh.Client, goServerIp, privateKeyName *string) error {
 	session, err := b.openSshSession(client)
 	if err != nil {
 		return err
 	}
 	defer session.Close()
 
-	composeContent := fmt.Sprintf(`
-	services:
-	  gocd-agent:
-		image: gocd/gocd-agent-docker-dind:v24.5.0
-		privileged: true
-		environment:
-		  - GO_SERVER_URL=http://%s:8153/go
-		  - AGENT_AUTO_REGISTER_KEY=e00bfc7c-1f53-4fbf-b931-cc69a32c2990
-		  - AGENT_AUTO_REGISTER_RESOURCES=your_resources
-		  - AGENT_AUTO_REGISTER_ENVIRONMENTS=your_environments
-		  - AGENT_AUTO_REGISTER_HOSTNAME=your_agent_hostname`, b.getMyPublicIP())
+	composeContent := fmt.Sprintf(`services:
+  gocd-agent:
+    image: gocd/gocd-agent-docker-dind:v24.5.0
+    privileged: true
+    environment:
+      - GO_SERVER_URL=http://%s:8153/go
+      - AGENT_AUTO_REGISTER_KEY=e00bfc7c-1f53-4fbf-b931-cc69a32c2990
+      - AGENT_AUTO_REGISTER_RESOURCES=your_resources
+      - AGENT_AUTO_REGISTER_ENVIRONMENTS=your_environments
+      - AGENT_AUTO_REGISTER_HOSTNAME=%s`, *goServerIp, *privateKeyName)
 
 	cmd := fmt.Sprintf("mkdir -p /mnt/xvdf/go-agent && cd /mnt/xvdf/go-agent && echo '%s' | sudo tee docker-compose.yml", composeContent)
 	output, runError := session.CombinedOutput(cmd)
@@ -428,6 +430,150 @@ func (b *CliBusiness) createGoAgentDockerCompose(client *ssh.Client) error {
 	}
 	fmt.Printf("Command output: %s\n", output)
 	fmt.Println("docker-compose.yml file created successfully in go-agent directory")
+	return nil
+}
+
+func (b *CliBusiness) InstallGoAgent(command *domainDto.InstallGoAgentCommand) error {
+	privateKeyName := command.ProjectName + strconv.Itoa(int(command.KeyNumber))
+	config, err := b.createSshClientConfig(&privateKeyName)
+	if err != nil {
+		return err
+	}
+
+	client, err := b.establishSshConnection(&command.PublicIp, config)
+	if err != nil {
+		return fmt.Errorf("failed to dial : %s", err)
+	}
+	defer client.Close()
+
+	installErr := b.installGoAgent(client, &command.GoServerIp)
+	return installErr
+}
+
+func (b *CliBusiness) installGoAgent(client *ssh.Client, goServerIp *string) error {
+	path := "/mnt/xvdf/go-agent"
+	b.createDirectory(client, &path)
+	b.createGoAgent(client)
+	b.createGoAgentConfig(client, goServerIp)
+	b.restartGoAgent(client)
+	//b.createNginxConfig(client)
+	//b.runDockerContainer(client, &path)
+	return nil
+}
+
+func (b *CliBusiness) createGoAgent(client *ssh.Client) error {
+	session, err := b.openSshSession(client)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	cmd := `
+    if [ -f /etc/debian_version ]; then
+		sudo install -m 0755 -d /etc/apt/keyrings
+		curl https://download.gocd.org/GOCD-GPG-KEY.asc | sudo gpg --dearmor -o /etc/apt/keyrings/gocd.gpg
+        sudo chmod a+r /etc/apt/keyrings/gocd.gpg
+echo "deb [signed-by=/etc/apt/keyrings/gocd.gpg] https://download.gocd.org /" | sudo tee /etc/apt/sources.list.d/gocd.list
+		sudo apt-get update
+        sudo apt-get install -y go-agent
+    elif [ -f /etc/redhat-release ]; then
+        sudo yum install -y go-agent
+    else
+        echo "Unsupported Linux distribution"
+        exit 1
+    fi
+    `
+	output, err := session.CombinedOutput(cmd)
+	if err != nil {
+		fmt.Println("Error installing go-agent:", err)
+		fmt.Println(string(output))
+		return err
+	}
+	fmt.Println("GoCD agent installed successfully")
+	fmt.Println(string(output))
+	return nil
+}
+
+func (b *CliBusiness) createGoAgentConfig(client *ssh.Client, goServerIp *string) error {
+	session, err := b.openSshSession(client)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	filePath := "/var/lib/go-agent/config/autoregister.properties"
+	mkdirCmd := fmt.Sprintf("sudo mkdir -p %s", filepath.Dir(filePath))
+	output, err := session.CombinedOutput(mkdirCmd)
+	if err != nil {
+		return fmt.Errorf("command failed: %v, output: %s", err, string(output))
+	}
+	fmt.Printf("Command output: %s\n", output)
+
+	session, err = b.openSshSession(client)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	fileContent := `agent.auto.register.key=e00bfc7c-1f53-4fbf-b931-cc69a32c2990
+agent.auto.register.resources=your_resources
+agent.auto.register.environments=your_environments
+agent.auto.register.hostname=your_agent_hostname
+`
+	writeFileCmd := fmt.Sprintf("echo '%s' | sudo tee %s", fileContent, filePath)
+	output, err = session.CombinedOutput(writeFileCmd)
+	if err != nil {
+		return fmt.Errorf("failed to write autoregister.properties: %v", err)
+	}
+	fmt.Printf("Command output: %s\n", output)
+	fmt.Println("autoregister.properties file configured successfully.")
+
+	session, err = b.openSshSession(client)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	readFilePath := "/usr/share/go-agent/wrapper-config/wrapper-properties.conf"
+	readFileCmd := fmt.Sprintf("cat %s", readFilePath)
+	output, err = session.CombinedOutput(readFileCmd)
+	if err != nil {
+		return fmt.Errorf("command failed: %v, output: %s", err, string(output))
+	}
+	fmt.Printf("Command output: %s\n", output)
+
+	content := string(output)
+	updatedContent := strings.Replace(content,
+		"wrapper.app.parameter.101=http://localhost",
+		fmt.Sprintf("wrapper.app.parameter.101=http://%s", *goServerIp),
+		-1)
+
+	session, err = b.openSshSession(client)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	updateCmd := fmt.Sprintf("echo '%s' > %s", updatedContent, filePath)
+	err = session.Run(updateCmd)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Command output: %s\n", output)
+	fmt.Println("GoCD agent cofigured successfully.")
+	return nil
+}
+
+func (b *CliBusiness) restartGoAgent(client *ssh.Client) error {
+	session, err := b.openSshSession(client)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	restartCmd := "sudo systemctl restart go-agent"
+	output, err := session.CombinedOutput(restartCmd)
+	if err != nil {
+		return nil
+	}
+	fmt.Printf("Command output: %s\n", output)
+	fmt.Println("Gocd restarted successfully.")
 	return nil
 }
 
