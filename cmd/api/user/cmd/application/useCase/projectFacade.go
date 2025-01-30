@@ -33,7 +33,7 @@ func (f *UserProjectFacade) CreateUser(input dto.CreateUserCommand) (*user.Model
 	if err != nil {
 		return nil, err
 	}
-	createdUser, err := f.userService.Create(project.Id, input.KeyNumber, input.ProjectName, input.Password, input.AccessKey, input.AccessKey)
+	createdUser, err := f.userService.Create(project.Id, input.KeyNumber, input.ProjectName, input.Password, input.AccessKey, input.SecretAccessKey)
 	return createdUser, err
 }
 
