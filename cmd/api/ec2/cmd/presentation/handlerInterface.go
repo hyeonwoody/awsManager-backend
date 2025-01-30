@@ -12,4 +12,5 @@ type IHandler interface {
 	InstallDockerNginx(c *gin.Context)
 	InstallGoAgent(c *gin.Context)
 	InstallDockerGoAgent(c *gin.Context)
+	InstallGoServer(c *gin.Context)
 }

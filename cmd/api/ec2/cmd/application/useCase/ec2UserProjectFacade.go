@@ -6,6 +6,7 @@ import (
 	ec2DomainDto "awsManager/api/ec2/cmd/domain/dto"
 	projectDomain "awsManager/api/project/cmd/domain"
 	userDomain "awsManager/api/user/cmd/domain"
+	"strconv"
 )
 
 type Ec2UserProjectFacade struct {
@@ -93,6 +94,9 @@ func (f *Ec2UserProjectFacade) InstallDockerNginx(input *useCaseDto.InstallComma
 	if err != nil {
 		return nil, err
 	}
+	var pcIp = f.ec2Svc.GetMyIp()
+	keyName := project.Name + strconv.Itoa(int(ec2.KeyNumber))
+	f.ec2Svc.AddInboundRule(&user.AccessKey, &user.SecretAccessKey, &keyName, &pcIp)
 	return nil, nil
 }
 
@@ -106,16 +110,17 @@ func (f *Ec2UserProjectFacade) InstallGoAgent(input *useCaseDto.InstallCommand) 
 	}
 	f.ec2Svc.InstallGoAgent(ec2DomainDto.InstallGoAgentCommandFrom(user.AccessKey, user.SecretAccessKey, ec2.PublicIp, project.Name, goServerIp, ec2.KeyNumber))
 
-	shouldReturn, result, err := f.addInboundRuleInProxyNginx(&ec2.PublicIp)
+	shouldReturn, result, err := f.addInboundRuleInBoGocd(&ec2.PublicIp)
 	if shouldReturn {
 		return result, err
 	}
 	return nil, nil
 }
 
-func (f *Ec2UserProjectFacade) addInboundRuleInProxyNginx(publicIp *string) (bool, interface{}, error) {
+func (f *Ec2UserProjectFacade) addInboundRuleInBoGocd(publicIp *string) (bool, interface{}, error) {
 	gocdUser, err := f.userSvc.FindGocd()
-	_, _ = f.ec2Svc.AddInboundRule(&gocdUser.AccessKey, &gocdUser.SecretAccessKey, publicIp)
+	keyName := "bohemianGocd0"
+	_, _ = f.ec2Svc.AddInboundRule(&gocdUser.AccessKey, &gocdUser.SecretAccessKey, publicIp, &keyName)
 	if err != nil {
 		return true, nil, err
 	}
@@ -130,11 +135,26 @@ func (f *Ec2UserProjectFacade) InstallDockerGoAgent(input *useCaseDto.InstallCom
 	if err != nil {
 		return nil, err
 	}
-	f.ec2Svc.InstallDockerGoAgent(ec2DomainDto.InstallGoAgentCommandFrom(user.AccessKey, user.SecretAccessKey, ec2.PublicIp, project.Name, goServerIp, ec2.KeyNumber))
-	shouldReturn, result, err := f.addInboundRuleInProxyNginx(&ec2.PublicIp)
+	f.ec2Svc.InstallDockerGoAgent(ec2DomainDto.InstallDockerGoAgentCommandFrom(user.AccessKey, user.SecretAccessKey, ec2.PublicIp, project.Name, goServerIp, ec2.KeyNumber))
+	shouldReturn, result, err := f.addInboundRuleInBoGocd(&ec2.PublicIp)
 	if shouldReturn {
 		return result, err
 	}
 
+	return nil, nil
+}
+
+func (f *Ec2UserProjectFacade) InstallGoServer(input *useCaseDto.InstallCommand) (interface{}, error) {
+	ec2, _ := f.ec2Svc.FindByInstanceId(&input.InstanceId)
+	project, _ := f.projectSvc.Read(ec2.ProjectId)
+	user, err := f.userSvc.FindByProjectIdAndKey(ec2.ProjectId, ec2.KeyNumber)
+
+	if err != nil {
+		return nil, err
+	}
+	pcIp := f.ec2Svc.GetMyIp()
+	f.ec2Svc.InstallGoServer(ec2DomainDto.InstallGocdCommandFrom(user.AccessKey, user.SecretAccessKey, ec2.PublicIp, project.Name, ec2.KeyNumber))
+	keyName := "bohemiangocd0"
+	f.ec2Svc.AddInboundRule(&user.AccessKey, &user.SecretAccessKey, &pcIp, &keyName)
 	return nil, nil
 }

@@ -23,28 +23,23 @@ import (
 type SdkBusiness struct {
 }
 
-func (b SdkBusiness) AddServiceInboundRule(accessKey *string, secretAccessKey *string, publicIp *string) {
+func (b SdkBusiness) AddInboundRule(accessKey, secretAccessKey, publicIp, keyName *string) {
 	client, _ := b.GetAsyncClient(accessKey, secretAccessKey)
-	_, securityGroupId := b.getExistSecurityGroupId("bohemiangocd0", client)
+	_, securityGroupId := b.getExistSecurityGroupId(*keyName, client)
 	b.addInboundRule(client, securityGroupId, *publicIp)
-}
-
-func (b *SdkBusiness) AddProxyNginxInboundRule(command *domainDto.InstallGoAgentCommand) {
-	var keyName = command.ProjectName + strconv.Itoa(int(command.KeyNumber))
-	client, _ := b.GetAsyncClient(&command.AccessKey, &command.SecretAccessKey)
-	_, securityGroupId := b.getExistSecurityGroupId(keyName, client)
-	b.addInboundRule(client, securityGroupId, command.GoServerIp)
-}
-
-func (b *SdkBusiness) AddPCInboundRule(command *domainDto.InstallDockerNginxCommand) {
-	var keyName = command.ProjectName + strconv.Itoa(int(command.KeyNumber))
-	client, _ := b.GetAsyncClient(&command.AccessKey, &command.SecretAccessKey)
-	_, securityGroupId := b.getExistSecurityGroupId(keyName, client)
-	b.addInboundRule(client, securityGroupId, b.getMyPublicIP())
 }
 
 func (b *SdkBusiness) addInboundRule(client *ec2.Client, securityGroupId, cidrIp string) (error, string) {
 	// Add inbound rule
+	// var port int32
+	// if cidrIp == b.getMyPublicIP() {
+	// 	port = 8153
+	// }
+	// if cidrIp != b.getMyPublicIP() {
+	// 	port = 18153
+	// 	cidrIp += "/32"
+	// }
+
 	ingressInput := &ec2.AuthorizeSecurityGroupIngressInput{
 		GroupId: aws.String(securityGroupId),
 		IpPermissions: []types.IpPermission{

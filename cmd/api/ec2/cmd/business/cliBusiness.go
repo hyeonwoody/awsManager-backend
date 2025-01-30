@@ -290,8 +290,38 @@ func (b *CliBusiness) installDockerNginx(client *ssh.Client) error {
 	path := "/mnt/xvdf/nginx-proxy"
 	b.createDirectory(client, &path)
 	b.createNginxConfig(client)
+	//b.createGoAgentProxy(client)
 	b.createNginxDockerCompose(client)
 	b.runDockerContainer(client, &path)
+	return nil
+}
+
+func (b *CliBusiness) createGoAgentProxy(client *ssh.Client) error {
+	session, err := b.openSshSession(client)
+	if err != nil {
+		return nil
+	}
+	defer session.Close()
+	configContent := fmt.Sprintf(`server {
+    listen 80;
+    server_name goserver.yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:8153;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}`)
+
+	cmd := fmt.Sprintf("cd /mnt/xvdf/nginx-proxy && echo '%s' | sudo tee nginx.conf", configContent)
+	output, runError := session.CombinedOutput(cmd)
+	if runError != nil {
+		return fmt.Errorf("failed to create docker compose: %w", runError)
+	}
+	fmt.Printf("Command output: %s\n", output)
+	fmt.Println("nginx.conf file created successfully in nginx-proxy directory")
 	return nil
 }
 
@@ -310,7 +340,8 @@ services:
       - "80:80"
       - "8153:8153"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf`
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./logs:/var/log/nginx`
 
 	cmd := fmt.Sprintf("mkdir -p /mnt/xvdf/nginx-proxy && cd /mnt/xvdf/nginx-proxy && echo '%s' | sudo tee docker-compose.yml", composeContent)
 	output, runError := session.CombinedOutput(cmd)
@@ -337,9 +368,18 @@ http {
     server %s:8153;
   }
 
+  # Define a custom log format
+  log_format gocd_custom '$remote_addr - $remote_user [$time_local] '
+                         '"$request" $status $body_bytes_sent '
+                         '"$http_referer" "$http_user_agent" '
+                         '$request_time';
+
   server {
     listen 8153;
     server_name proxy-nginx;
+
+	access_log /var/log/nginx/gocd-access.log;
+    error_log /var/log/nginx/gocd-error.log;
 
     # go-agent에서 go-server로의 요청 처리
     location / {
@@ -350,7 +390,7 @@ http {
       proxy_set_header X-Forwarded-Proto $scheme;
     }
   }
-}`, b.getMyPublicIP())
+}`, b.GetMyPublicIP())
 
 	cmd := fmt.Sprintf("cd /mnt/xvdf/nginx-proxy && echo '%s' | sudo tee nginx.conf", configContent)
 	output, runError := session.CombinedOutput(cmd)
@@ -379,7 +419,7 @@ func (b *CliBusiness) runDockerContainer(client *ssh.Client, path *string) error
 	return nil
 }
 
-func (b *CliBusiness) InstallDockerGoAgent(command *domainDto.InstallGoAgentCommand) error {
+func (b *CliBusiness) InstallDockerGoAgent(command *domainDto.InstallDockerGoAgentCommand) error {
 	privateKeyName := command.ProjectName + strconv.Itoa(int(command.KeyNumber))
 	config, err := b.createSshClientConfig(&privateKeyName)
 	if err != nil {
@@ -421,7 +461,10 @@ func (b *CliBusiness) createGoAgentDockerCompose(client *ssh.Client, goServerIp,
       - AGENT_AUTO_REGISTER_KEY=e00bfc7c-1f53-4fbf-b931-cc69a32c2990
       - AGENT_AUTO_REGISTER_RESOURCES=your_resources
       - AGENT_AUTO_REGISTER_ENVIRONMENTS=your_environments
-      - AGENT_AUTO_REGISTER_HOSTNAME=%s`, *goServerIp, *privateKeyName)
+      - AGENT_AUTO_REGISTER_HOSTNAME=%s
+    ports:
+      - '8153:8153'
+      - '8154:8154'`, *goServerIp, *privateKeyName)
 
 	cmd := fmt.Sprintf("mkdir -p /mnt/xvdf/go-agent && cd /mnt/xvdf/go-agent && echo '%s' | sudo tee docker-compose.yml", composeContent)
 	output, runError := session.CombinedOutput(cmd)
@@ -446,15 +489,15 @@ func (b *CliBusiness) InstallGoAgent(command *domainDto.InstallGoAgentCommand) e
 	}
 	defer client.Close()
 
-	installErr := b.installGoAgent(client, &command.GoServerIp)
+	installErr := b.installGoAgent(client, &command.GoServerIp, &privateKeyName)
 	return installErr
 }
 
-func (b *CliBusiness) installGoAgent(client *ssh.Client, goServerIp *string) error {
+func (b *CliBusiness) installGoAgent(client *ssh.Client, goServerIp, privateKeyName *string) error {
 	path := "/mnt/xvdf/go-agent"
 	b.createDirectory(client, &path)
 	b.createGoAgent(client)
-	b.createGoAgentConfig(client, goServerIp)
+	b.createGoAgentConfig(client, goServerIp, privateKeyName)
 	b.restartGoAgent(client)
 	//b.createNginxConfig(client)
 	//b.runDockerContainer(client, &path)
@@ -494,7 +537,7 @@ echo "deb [signed-by=/etc/apt/keyrings/gocd.gpg] https://download.gocd.org /" | 
 	return nil
 }
 
-func (b *CliBusiness) createGoAgentConfig(client *ssh.Client, goServerIp *string) error {
+func (b *CliBusiness) createGoAgentConfig(client *ssh.Client, goServerIp, privateKeyName *string) error {
 	session, err := b.openSshSession(client)
 	if err != nil {
 		return err
@@ -513,11 +556,11 @@ func (b *CliBusiness) createGoAgentConfig(client *ssh.Client, goServerIp *string
 		return err
 	}
 	defer session.Close()
-	fileContent := `agent.auto.register.key=e00bfc7c-1f53-4fbf-b931-cc69a32c2990
-agent.auto.register.resources=your_resources
+	fileContent := fmt.Sprintf(`agent.auto.register.key=62b294de-03d4-4694-b566-7ab98fe9bdaa
+agent.auto.register.resources=%s
 agent.auto.register.environments=your_environments
-agent.auto.register.hostname=your_agent_hostname
-`
+agent.auto.register.hostname=%s
+`, *privateKeyName, *privateKeyName)
 	writeFileCmd := fmt.Sprintf("echo '%s' | sudo tee %s", fileContent, filePath)
 	output, err = session.CombinedOutput(writeFileCmd)
 	if err != nil {
@@ -532,26 +575,26 @@ agent.auto.register.hostname=your_agent_hostname
 	}
 	defer session.Close()
 	readFilePath := "/usr/share/go-agent/wrapper-config/wrapper-properties.conf"
-	readFileCmd := fmt.Sprintf("cat %s", readFilePath)
+	readFileCmd := fmt.Sprintf("sudo cat %s", readFilePath)
 	output, err = session.CombinedOutput(readFileCmd)
 	if err != nil {
 		return fmt.Errorf("command failed: %v, output: %s", err, string(output))
 	}
 	fmt.Printf("Command output: %s\n", output)
 
-	content := string(output)
-	updatedContent := strings.Replace(content,
-		"wrapper.app.parameter.101=http://localhost",
-		fmt.Sprintf("wrapper.app.parameter.101=http://%s", *goServerIp),
-		-1)
-
+	// content := string(output)
 	session, err = b.openSshSession(client)
 	if err != nil {
 		return err
 	}
 	defer session.Close()
-	updateCmd := fmt.Sprintf("echo '%s' > %s", updatedContent, filePath)
+	updateCmd := fmt.Sprintf("sudo sed -i 's/localhost/%s/g' %s", *goServerIp, readFilePath)
 	err = session.Run(updateCmd)
+	if err != nil {
+		return fmt.Errorf("failed to update file: %w", err)
+	}
+
+	session, err = b.openSshSession(client)
 	if err != nil {
 		return err
 	}
@@ -577,7 +620,109 @@ func (b *CliBusiness) restartGoAgent(client *ssh.Client) error {
 	return nil
 }
 
-func (b *CliBusiness) getMyPublicIP() string {
+func (b *CliBusiness) InstallGoServer(command *domainDto.InstallGocdCommand) error {
+	privateKeyName := command.ProjectName + strconv.Itoa(int(command.KeyNumber))
+	config, err := b.createSshClientConfig(&privateKeyName)
+	if err != nil {
+		return err
+	}
+
+	client, err := b.establishSshConnection(&command.PublicIp, config)
+	if err != nil {
+		return fmt.Errorf("failed to dial : %s", err)
+	}
+	defer client.Close()
+
+	installErr := b.installGoServer(client, &privateKeyName)
+	return installErr
+}
+
+func (b *CliBusiness) installGoServer(client *ssh.Client, privateKeyName *string) error {
+	path := "/mnt/xvdf/go-server"
+	b.createDirectory(client, &path)
+	b.createGoServer(client)
+	b.createGoServerConfig(client, privateKeyName)
+	b.restartGoServer(client)
+	//b.createNginxConfig(client)
+	//b.runDockerContainer(client, &path)
+	return nil
+}
+
+func (b *CliBusiness) restartGoServer(client *ssh.Client) error {
+	session, err := b.openSshSession(client)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	fmt.Println("Starting and enabling GoCD server service...")
+	startServiceCmd := "sudo systemctl start go-server && sudo systemctl enable go-server"
+	output, err := session.CombinedOutput(startServiceCmd)
+	if err != nil {
+		return fmt.Errorf("failed to start go server")
+	}
+	fmt.Printf("Command output: %s\n", output)
+	return nil
+}
+
+func (b *CliBusiness) createGoServerConfig(client *ssh.Client, privateKeyName *string) error {
+	session, err := b.openSshSession(client)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	fmt.Println("Configuring GoCD server properties...")
+	serverConfigPath := "/etc/default/go-server"
+	fileContent := fmt.Sprintf(`GO_SERVER_SYSTEM_PROPERTIES="-Dcruise.server.port=8153 -Dcruise.server.ssl.port=8154"
+GO_SERVER_JVM_OPTIONS="-Xms512m -Xmx1024m"`)
+	writeConfigCmd := fmt.Sprintf("echo '%s' | sudo tee %s", fileContent, serverConfigPath)
+	output, err := session.CombinedOutput(writeConfigCmd)
+	if err != nil {
+		return fmt.Errorf("failed to configure GoCD server properties: %v, output: %s", err, string(output))
+	}
+	fmt.Printf("Command output: %s\n", output)
+
+	fmt.Println("GoCD agent cofigured successfully.")
+	return nil
+}
+
+func (b *CliBusiness) createGoServer(client *ssh.Client) error {
+	session, err := b.openSshSession(client)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	fmt.Println("Adding GoCD repository and installing GoCD server...")
+	installCmd := `
+        sudo install -m 0755 -d /etc/apt/keyrings &&
+        curl https://download.gocd.org/GOCD-GPG-KEY.asc | sudo gpg --dearmor -o /etc/apt/keyrings/gocd.gpg &&
+        sudo chmod a+r /etc/apt/keyrings/gocd.gpg &&
+        echo "deb [signed-by=/etc/apt/keyrings/gocd.gpg] https://download.gocd.org /" | sudo tee /etc/apt/sources.list.d/gocd.list &&
+        sudo apt-get update
+    `
+	output, err := session.CombinedOutput(installCmd)
+	if err != nil {
+		return fmt.Errorf("failed to add GoCD repository: %v, output: %s", err, string(output))
+	}
+	fmt.Printf("Command output: %s\n", output)
+
+	session, err = b.openSshSession(client)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	installGoServerCmd := "sudo apt-get install --install-recommends -y go-server"
+	output, err = session.CombinedOutput(installGoServerCmd)
+	if err != nil {
+		return fmt.Errorf("failed to install GoCD server: %v, output: %s", err, string(output))
+	}
+
+	fmt.Printf("Command output: %s\n", output)
+	fmt.Println("GoCD agent installed successfully")
+	fmt.Println(string(output))
+	return nil
+}
+
+func (b *CliBusiness) GetMyPublicIP() string {
 	resp, err := http.Get("https://ifconfig.co")
 	if err != nil {
 		return ""

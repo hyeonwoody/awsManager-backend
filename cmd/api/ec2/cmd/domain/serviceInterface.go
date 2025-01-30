@@ -15,7 +15,9 @@ type IService interface {
 	InstallDocker(command *dto.InstallCommand) (*ec2.Model, error)
 	InstallDockerNginx(command *dto.InstallDockerNginxCommand) (*ec2Model.Model, error)
 	InstallGoAgent(command *dto.InstallGoAgentCommand) (*ec2Model.Model, error)
-	InstallDockerGoAgent(command *dto.InstallGoAgentCommand) (*ec2Model.Model, error)
+	InstallDockerGoAgent(command *dto.InstallDockerGoAgentCommand) (*ec2Model.Model, error)
+	InstallGoServer(command *dto.InstallGocdCommand) (*ec2Model.Model, error)
 	GetProxyNginxIp() string
-	AddInboundRule(accessKey, secretAccessKey, publicIp *string) (*string, error)
+	GetMyIp() string
+	AddInboundRule(accessKey, secretAccessKey, keyName, publicIp *string) (*string, error)
 }

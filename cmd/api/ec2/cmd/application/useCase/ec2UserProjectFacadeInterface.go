@@ -12,4 +12,5 @@ type IEc2UserProjectFacade interface {
 	InstallDockerNginx(input *useCaseDto.InstallCommand) (interface{}, error)
 	InstallGoAgent(input *useCaseDto.InstallCommand) (interface{}, error)
 	InstallDockerGoAgent(input *useCaseDto.InstallCommand) (interface{}, error)
+	InstallGoServer(input *useCaseDto.InstallCommand) (interface{}, error)
 }
