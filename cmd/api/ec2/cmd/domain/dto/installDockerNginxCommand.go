@@ -16,3 +16,17 @@ func InstallDockerNginxCommandFrom(accessKey, secretAccessKey, publicIp, project
 		ProjectName:     projectName,
 		KeyNumber:       keyNumber}
 }
+
+func (c *InstallDockerNginxCommand) GetProjectName() string {
+	return c.ProjectName
+}
+
+func (c *InstallDockerNginxCommand) GetKeyNumber() uint {
+	return c.KeyNumber
+}
+func (c *InstallDockerNginxCommand) GetAccessKey() string {
+	return c.AccessKey
+}
+func (c *InstallDockerNginxCommand) GetSecretAccessKey() string {
+	return c.SecretAccessKey
+}
