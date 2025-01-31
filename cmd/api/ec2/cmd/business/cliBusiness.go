@@ -3,8 +3,10 @@ package ec2_business
 import (
 	dto "awsManager/api/ec2/cmd/business/dto"
 	domainDto "awsManager/api/ec2/cmd/domain/dto"
+	"encoding/xml"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/user"
@@ -556,11 +558,11 @@ func (b *CliBusiness) createGoAgentConfig(client *ssh.Client, goServerIp, privat
 		return err
 	}
 	defer session.Close()
-	fileContent := fmt.Sprintf(`agent.auto.register.key=62b294de-03d4-4694-b566-7ab98fe9bdaa
+	fileContent := fmt.Sprintf(`agent.auto.register.key=%s
 agent.auto.register.resources=%s
 agent.auto.register.environments=your_environments
 agent.auto.register.hostname=%s
-`, *privateKeyName, *privateKeyName)
+`, getAgentAutoRegisterKey(goServerIp), *privateKeyName, *privateKeyName)
 	writeFileCmd := fmt.Sprintf("echo '%s' | sudo tee %s", fileContent, filePath)
 	output, err = session.CombinedOutput(writeFileCmd)
 	if err != nil {
@@ -598,10 +600,47 @@ agent.auto.register.hostname=%s
 	if err != nil {
 		return err
 	}
+	defer session.Close()
+	givePermissionCmd := fmt.Sprintf("sudo chown -R go:go /var/lib/go-agent/config")
+	err = session.Run(givePermissionCmd)
+	if err != nil {
+		return fmt.Errorf("failed to update file: %w", err)
+	}
 
 	fmt.Printf("Command output: %s\n", output)
 	fmt.Println("GoCD agent cofigured successfully.")
 	return nil
+}
+
+func getAgentAutoRegisterKey(goServerIp *string) string {
+	url := fmt.Sprintf("http://%s:8153/go/api/admin/config.xml", *goServerIp)
+	resp, err := http.Get(url)
+	if err != nil {
+		return err.Error()
+	}
+	defer resp.Body.Close()
+
+	// Read the response body
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err.Error()
+	}
+
+	type Server struct {
+		AgentAutoRegisterKey string `xml:"agentAutoRegisterKey,attr"`
+	}
+
+	type Cruise struct {
+		XMLName xml.Name `xml:"cruise"`
+		Server  Server   `xml:"server"`
+	}
+
+	var cruise Cruise
+	err = xml.Unmarshal(body, &cruise)
+	if err != nil {
+		return err.Error()
+	}
+	return cruise.Server.AgentAutoRegisterKey
 }
 
 func (b *CliBusiness) restartGoAgent(client *ssh.Client) error {

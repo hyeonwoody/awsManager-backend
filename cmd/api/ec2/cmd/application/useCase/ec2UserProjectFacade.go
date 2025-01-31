@@ -119,7 +119,7 @@ func (f *Ec2UserProjectFacade) InstallGoAgent(input *useCaseDto.InstallCommand) 
 
 func (f *Ec2UserProjectFacade) addInboundRuleInBoGocd(publicIp *string) (bool, interface{}, error) {
 	gocdUser, err := f.userSvc.FindGocd()
-	keyName := "bohemianGocd0"
+	keyName := "bohemiangocd0"
 	_, _ = f.ec2Svc.AddInboundRule(&gocdUser.AccessKey, &gocdUser.SecretAccessKey, publicIp, &keyName)
 	if err != nil {
 		return true, nil, err
@@ -152,9 +152,9 @@ func (f *Ec2UserProjectFacade) InstallGoServer(input *useCaseDto.InstallCommand)
 	if err != nil {
 		return nil, err
 	}
-	pcIp := f.ec2Svc.GetMyIp()
+	ip := "0.0.0.0"
 	f.ec2Svc.InstallGoServer(ec2DomainDto.InstallGocdCommandFrom(user.AccessKey, user.SecretAccessKey, ec2.PublicIp, project.Name, ec2.KeyNumber))
 	keyName := "bohemiangocd0"
-	f.ec2Svc.AddInboundRule(&user.AccessKey, &user.SecretAccessKey, &pcIp, &keyName)
+	f.ec2Svc.AddInboundRule(&user.AccessKey, &user.SecretAccessKey, &ip, &keyName)
 	return nil, nil
 }
