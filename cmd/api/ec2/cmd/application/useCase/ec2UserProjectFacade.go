@@ -44,6 +44,9 @@ func (f *Ec2UserProjectFacade) Create(input *useCaseDto.CreateEc2Command) (inter
 	if err != nil {
 		return nil, err
 	}
+
+	f.ec2Svc.InstallDocker(ec2DomainDto.InstallCommandFrom(ec2.PublicIp, project.Name, ec2.KeyNumber))
+
 	user.Ec2InstanceId = ec2.InstanceId
 	f.userSvc.Save(user)
 
