@@ -20,6 +20,36 @@ import (
 type CliBusiness struct {
 }
 
+func (b CliBusiness) AddGoUserToDockerGroup(command *domainDto.InstallGoAgentCommand) error {
+	privateKeyName := command.ProjectName + strconv.Itoa(int(command.KeyNumber))
+	config, err := b.createSshClientConfig(&privateKeyName)
+	if err != nil {
+		return err
+	}
+
+	client, err := b.establishSshConnection(&command.PublicIp, config)
+	if err != nil {
+		return fmt.Errorf("failed to dial : %s", err)
+	}
+	defer client.Close()
+
+	session, err := b.openSshSession(client)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	cmd := `sudo usermod -aG docker go && sudo chown go:docker /var/run/docker.sock && sudo chown go:docker /var/run/docker.sock`
+	output, err := session.CombinedOutput(cmd)
+	if err != nil {
+		fmt.Println("Error command:", err)
+		fmt.Println(string(output))
+		return err
+	}
+
+	return nil
+}
+
 func NewCliBusiness() *CliBusiness {
 	return &CliBusiness{}
 }

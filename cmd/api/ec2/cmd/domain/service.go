@@ -125,6 +125,7 @@ func (s *Service) InstallDockerNginx(command *dto.InstallDockerNginxCommand) (*e
 
 func (s *Service) InstallGoAgent(command *dto.InstallGoAgentCommand) (*ec2Model.Model, error) {
 	s.cliBiz.InstallGoAgent(command)
+	s.cliBiz.AddGoUserToDockerGroup(command)
 	return nil, nil
 }
 
